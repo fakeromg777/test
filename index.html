@@ -34,9 +34,10 @@
         <button onclick="login()">登入</button>
         <p id="loginMsg"></p>
     </div>
-    
+  <div id="app" style="display:none;">
+  
     <h1>🎵 ESP32 鋼琴挑戰 (測試版)</h1>
-    <h2>👤 玩家：<span id="userName">尚未登入</span></h2>
+    <h2>👤 玩家：<span id="userName">---</span></h2>
 
     <div class="box">
         <h3>1. 裝置連線與測試</h3>
@@ -95,6 +96,31 @@
     </div>
 
 <script>
+    let USERS = {};
+
+fetch("users.json")
+  .then(res => res.json())
+  .then(data => USERS = data);
+
+/* ========= 登入 ========= */
+function login() {
+  const acc = document.getElementById("accountInput").value.trim();
+  const msg = document.getElementById("loginMsg");
+
+  if (!acc) {
+    msg.innerText = "請輸入編號";
+    return;
+  }
+
+  if (!USERS[acc]) {
+    msg.innerText = "此編號不存在";
+    return;
+  }
+
+  document.getElementById("userName").innerText = USERS[acc].name;
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("app").style.display = "block";
+}
     const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
     const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
     
@@ -258,39 +284,7 @@
             stopGame();
         }, 500);
     }
-    <script>
-  // ===== 原本就有的 JS =====
-  let ledChar = null;
-  let USERS = {};
-
-  fetch("users.json")
-    .then(res => res.json())
-    .then(data => { USERS = data; });
-
-  // ===== 你現在要加的 =====
-  function login() {
-    const acc = document.getElementById("accountInput").value.trim();
-    const msg = document.getElementById("loginMsg");
-
-    if (!acc) {
-      msg.innerText = "請輸入編號";
-      return;
-    }
-
-    if (!USERS[acc]) {
-      msg.innerText = "此編號不存在";
-      return;
-    }
-
-    localStorage.setItem("userId", acc);
-    localStorage.setItem("userName", USERS[acc].name);
-
-    document.getElementById("userName").innerText = USERS[acc].name;
-
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }
-</script>
+    
 
 </script>
 </body>
