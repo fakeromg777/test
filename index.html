@@ -195,6 +195,7 @@ function logout(){
   document.getElementById("userName").innerText = "---";
   document.getElementById("accountInput").value = "";
   document.getElementById("loginMsg").innerText = "已登出";
+  document.getElementById("createBox").style.display = "block";
 
   document.getElementById("app").style.display = "none";
   document.getElementById("loginBox").style.display = "block";
@@ -268,6 +269,8 @@ async function fetchUserById(id) {
 
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("app").style.display = "block";
+  document.getElementById("createBox").style.display = "none";
+
 }
 
     const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
@@ -479,13 +482,14 @@ async function createPlayer(){
   });
 
   if(!res.ok){
-    msg.innerText = "新增失敗（可能編號重複）";
-  }else{
-    msg.innerText = "新增成功！order_no 已自動產生";
-    document.getElementById("newPlayerId").value = "";
-    document.getElementById("newPlayerName").value = "";
+    const t = await res.text();
+    msg.innerText = "新增失敗：" + t;
+    return;
   }
+
+  msg.innerText = "新增成功！";
 }
+
 </script>
 </body>
 </html>
