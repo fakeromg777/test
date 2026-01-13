@@ -70,6 +70,7 @@
             </div>
         </div>
     </div>
+ 
 
     <div class="box" id="controlBox">
         <h3>2. 選擇關卡 (遊戲開始)</h3>
@@ -94,33 +95,45 @@
     <div class="debug-area">
         <p>除錯訊息: <span id="debugText">無</span></p>
     </div>
-
+</div>
 <script>
-    let USERS = {};
+const SUPABASE_URL = "https://rqeccfpfhqgvjypiwepg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_lmFnUceilhC48GOf4MT2Iw_kWsELN3o";
+async function fetchUserById(id) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/players?id=eq.${encodeURIComponent(id)}&select=id,name`,
+    {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+      }
+    }
+  );
 
-fetch("users.json")
-  .then(res => res.json())
-  .then(data => USERS = data);
-
-/* ========= 登入 ========= */
-function login() {
+  const data = await res.json();
+  return data.length > 0 ? data[0] : null;
+}
+    async function login() {
   const acc = document.getElementById("accountInput").value.trim();
   const msg = document.getElementById("loginMsg");
 
-  if (!acc) {
-    msg.innerText = "請輸入編號";
-    return;
-  }
+  if (!acc) { msg.innerText = "請輸入編號"; return; }
 
-  if (!USERS[acc]) {
-    msg.innerText = "此編號不存在";
-    return;
-  }
+  msg.innerText = "查詢中...";
 
-  document.getElementById("userName").innerText = USERS[acc].name;
+  const user = await fetchUserById(acc);
+
+  if (!user) { msg.innerText = "此編號不存在"; return; }
+
+  localStorage.setItem("userId", user.id);
+  localStorage.setItem("userName", user.name);
+
+  document.getElementById("userName").innerText = user.name;
+
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("app").style.display = "block";
 }
+
     const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
     const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
     
@@ -284,7 +297,15 @@ function login() {
             stopGame();
         }, 500);
     }
-    
+   window.addEventListener("load", async () => {
+  const savedId = localStorage.getItem("userId");
+  const savedName = localStorage.getItem("userName");
+  if(savedId && savedName){
+    document.getElementById("userName").innerText = savedName;
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+}); 
 
 </script>
 </body>
