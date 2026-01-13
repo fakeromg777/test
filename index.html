@@ -34,12 +34,7 @@
         <button onclick="login()">登入</button>
         <p id="loginMsg"></p>
     </div>
-    <div style="margin-top:20px;">
-      <input id="newPlayerId" placeholder="編號 (如 12)">
-      <input id="newPlayerName" placeholder="姓名">
-      <button onclick="createPlayer()">新增玩家</button>
-      <p id="createMsg"></p>
-   </div>
+
 
   <div id="app" style="display:none;">
   
@@ -195,7 +190,7 @@ function logout(){
   document.getElementById("userName").innerText = "---";
   document.getElementById("accountInput").value = "";
   document.getElementById("loginMsg").innerText = "已登出";
-  document.getElementById("createBox").style.display = "block";
+
 
   document.getElementById("app").style.display = "none";
   document.getElementById("loginBox").style.display = "block";
@@ -269,7 +264,7 @@ async function fetchUserById(id) {
 
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("app").style.display = "block";
-  document.getElementById("createBox").style.display = "none";
+  
 
 }
 
@@ -460,35 +455,7 @@ async function fetchUserById(id) {
     document.getElementById("app").style.display = "block";
   }
 }); 
-async function createPlayer(){
-  const id = document.getElementById("newPlayerId").value.trim();
-  const name = document.getElementById("newPlayerName").value.trim();
-  const msg = document.getElementById("createMsg");
 
-  if(!id || !name){
-    msg.innerText = "請輸入編號與姓名";
-    return;
-  }
-
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/players`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    },
-    body: JSON.stringify([{ id, name }])
-  });
-
-  if(!res.ok){
-    const t = await res.text();
-    msg.innerText = "新增失敗：" + t;
-    return;
-  }
-
-  msg.innerText = "新增成功！";
-}
 
 </script>
 </body>
