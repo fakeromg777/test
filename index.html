@@ -37,7 +37,13 @@
   <div id="app" style="display:none;">
   
     <h1>🎵 ESP32 鋼琴挑戰 (測試版)</h1>
-    <h2>👤 玩家：<span id="userName">---</span></h2>
+    <h2>👤 玩家：<span id="userName">---</span> 
+        <button onclick="logout()" 
+        style="margin-left:10px; background:#555; color:white; padding:6px 12px; border-radius:6px;">
+        登出
+      </button>
+    </h2>
+
 
     <div class="box">
         <h3>1. 裝置連線與測試</h3>
@@ -97,8 +103,56 @@
     </div>
 </div>
 <script>
+function logout(){
+  // 如果正在玩，先停掉（避免計時器/藍牙狀態怪）
+  try { stopGame(); } catch(e) {}
+
+  localStorage.removeItem("userId");
+  localStorage.removeItem("userName");
+
+  document.getElementById("userName").innerText = "---";
+  document.getElementById("accountInput").value = "";
+  document.getElementById("loginMsg").innerText = "已登出";
+
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginBox").style.display = "block";
+}
+
 const SUPABASE_URL = "https://rqeccfpfhqgvjypiwepg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_lmFnUceilhC48GOf4MT2Iw_kWsELN3o";
+async function saveScoreToSupabase(seconds) {
+  const playerId = localStorage.getItem("userId");
+  const playerName = localStorage.getItem("userName");
+  const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
+
+  if(!playerId || !playerName) return;
+
+  const payload = [{
+    player_id: playerId,
+    player_name: playerName,
+    song_name: songName,
+    seconds: Number(seconds)
+  }];
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if(!res.ok){
+    const t = await res.text();
+    log("存分數失敗: " + t);
+  }else{
+    log("已存分數: " + seconds);
+  }
+}
+
 async function fetchUserById(id) {
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/players?id=eq.${encodeURIComponent(id)}&select=id,name`,
@@ -242,13 +296,20 @@ async function fetchUserById(id) {
     }
 
     function stopGame() {
-        clearInterval(timerInt);
-        isPlaying = false;
-        if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); // 靜音
-        document.getElementById('gameArea').style.display = 'none';
-        document.getElementById('controlBox').style.display = 'block';
-        document.getElementById('hardwareTest').style.display = 'block'; // 顯示測試區
-    }
+  // ✅ 停掉計時器
+  if (timerInt) {
+    clearInterval(timerInt);
+    timerInt = null;
+  }
+
+  isPlaying = false;
+  if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); // 靜音
+
+  document.getElementById('gameArea').style.display = 'none';
+  document.getElementById('controlBox').style.display = 'block';
+  document.getElementById('hardwareTest').style.display = 'block';
+}
+
 
     function playNote() {
         if(index >= song.length) {
@@ -288,15 +349,23 @@ async function fetchUserById(id) {
         }
     }
 
-    function finishGame() {
-        isPlaying = false;
-        if(ledChar) ledChar.writeValue(new TextEncoder().encode('0')); 
-        document.getElementById('currentNote').innerText = "🎉";
-        setTimeout(() => {
-            alert("恭喜完成！總時間: " + document.getElementById('timeDisplay').innerText + " 秒");
-            stopGame();
-        }, 500);
-    }
+   async function finishGame() {
+  isPlaying = false;
+  if(ledChar) ledChar.writeValue(new TextEncoder().encode('0'));
+
+  // 取得秒數（用畫面上的 timeDisplay 最直覺）
+  const seconds = parseFloat(document.getElementById('timeDisplay').innerText) || 0;
+
+  // 存到 Supabase
+  await saveScoreToSupabase(seconds);
+
+  document.getElementById('currentNote').innerText = "🎉";
+  setTimeout(() => {
+    alert("恭喜完成！總時間: " + seconds.toFixed(2) + " 秒");
+    stopGame();
+  }, 300);
+}
+
    window.addEventListener("load", async () => {
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
