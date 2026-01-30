@@ -401,6 +401,21 @@ async function connectLed() {
     alert("LED連線失敗: " + e);
   }
 }
+async function forceLedOff() {
+  if (!ledChar) return;
+
+  const enc = new TextEncoder();
+  const payload = enc.encode("0");
+
+  // 連發 3 次（避免偶發寫入沒成功）
+  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #1 fail", e); }
+  await new Promise(r => setTimeout(r, 30));
+  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #2 fail", e); }
+  await new Promise(r => setTimeout(r, 30));
+  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #3 fail", e); }
+
+  console.log("✅ forceLedOff sent");
+}
 
 async function connectBtn() {
   try {
