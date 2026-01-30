@@ -192,17 +192,24 @@ function showApp() {
 function logout(){
   try { stopGame(); } catch(e) {}
 
+  // 清 localStorage
   localStorage.removeItem("userId");
   localStorage.removeItem("userName");
 
-  // 清畫面文字
-  document.getElementById("userName").innerText = "---";
-  const msg = document.getElementById("loginMsg");
-  if (msg) msg.innerText = "已登出";
+  // 🔹 清登入輸入框
+  document.getElementById("accountInput").value = "";
+  document.getElementById("nameInput").value = "";
 
-  // ✅ 強制回登入畫面
+  // 🔹 清登入訊息
+  document.getElementById("loginMsg").innerText = "";
+
+  // 🔹 清上方玩家顯示
+  document.getElementById("userName").innerText = "---";
+
+  // 🔹 切回登入畫面
   showLogin();
 }
+
 
 
 async function saveScore(seconds) {
