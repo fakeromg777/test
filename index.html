@@ -482,15 +482,26 @@ function startGame() {
 }
 
 function stopGame() {
-  if (timerInt) { clearInterval(timerInt); timerInt = null; }
+  if (timerInt) {
+    clearInterval(timerInt);
+    timerInt = null;
+  }
 
   isPlaying = false;
-  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
+
+  // ✅ 關聲音
+  if (targetChar) {
+    targetChar.writeValue(new TextEncoder().encode("0"));
+  }
+
+  // ✅ 關燈（重點）
+  turnOffLed();
 
   document.getElementById("gameArea").style.display = "none";
   document.getElementById("controlBox").style.display = "block";
   document.getElementById("hardwareTest").style.display = "block";
 }
+
 
 function playNote() {
   if (index >= song.length) {
