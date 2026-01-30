@@ -191,17 +191,21 @@
 </div>
 
 <script>
+/* ================== 畫面切換 ================== */
 function showLogin() {
   document.getElementById("app").style.display = "none";
   document.getElementById("loginBox").style.display = "block";
+  document.getElementById("addBox").style.display = "block";
 }
 
 function showApp() {
   document.getElementById("loginBox").style.display = "none";
+  document.getElementById("addBox").style.display = "none";
   document.getElementById("app").style.display = "block";
 }
 
-function logout(){
+/* ================== 登出 ================== */
+function logout() {
   try { stopGame(); } catch(e) {}
 
   localStorage.removeItem("userId");
@@ -215,15 +219,52 @@ function logout(){
   showLogin();
 }
 
+/* ================== API：查玩家 ================== */
+async function fetchUserById(id) {
+  const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data && data.id ? data : null;
+}
 
+/* ================== 登入 ================== */
+async function login() {
+  const id = document.getElementById("idInput").value.trim();
+  const msg = document.getElementById("loginMsg");
 
+  if (!id) { msg.innerText = "請輸入編號"; return; }
+
+  msg.innerText = "查詢中...";
+
+  try {
+    const user = await fetchUserById(id);
+    if (!user) { msg.innerText = "找不到此編號"; return; }
+
+    localStorage.setItem("userId", user.id);
+    localStorage.setItem("userName", user.name);
+
+    document.getElementById("idInput").value = user.id;
+    document.getElementById("nameInput").value = user.name;
+    document.getElementById("userName").innerText = `${user.id}｜${user.name}`;
+
+    msg.innerText = "";
+    showApp();
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "登入失敗（請看 Console）";
+  }
+}
+
+/* ================== 存分數 ================== */
 async function saveScore(seconds) {
-  console.log("[saveScore] seconds=", seconds);
   const playerId = localStorage.getItem("userId");
   const playerName = localStorage.getItem("userName");
   const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
 
-  if(!playerId || !playerName) return;
+  if (!playerId || !playerName) {
+    log("⚠️ 未登入，略過存分數");
+    return;
+  }
 
   const res = await fetch(`/test/api/save_score.php`, {
     method: "POST",
@@ -236,261 +277,273 @@ async function saveScore(seconds) {
     })
   });
 
-  if(!res.ok){
-    const t = await res.text();
-    log("存分數失敗: " + t);
-  }else{
-    const t = await res.text();
-    log("已存分數: " + t);
+  const t = await res.text();
+  if (!res.ok) log("❌ 存分數失敗: " + t);
+  else log("✅ 已存分數: " + t);
+}
+
+/* ================== 新增人員：取得下一號 ================== */
+async function loadNextId() {
+  const msg = document.getElementById("addMsg");
+  msg.innerText = "";
+
+  try {
+    const res = await fetch("/test/api/next_player_id.php", { cache: "no-store" });
+    const data = await res.json();
+
+    const idEl = document.getElementById("newId");
+    idEl.value = data.next_id || "";
+    idEl.readOnly = true; // ✅ 你要的唯讀
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "取得下一號失敗（請看 Console）";
   }
 }
 
-async function fetchUserById(id) {
-  const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-  if(!res.ok) return null;
+/* ================== 新增人員：存回 DB ================== */
+async function addPlayer() {
+  const id = document.getElementById("newId").value.trim();
+  const name = document.getElementById("newName").value.trim();
+  const msg = document.getElementById("addMsg");
 
-  const data = await res.json();
-  return data && data.id ? data : null;
+  if (!id) { msg.innerText = "沒有自動編號"; return; }
+  if (!name) { msg.innerText = "請輸入姓名"; return; }
+
+  msg.innerText = "儲存中...";
+
+  try {
+    const res = await fetch("/test/api/add_player.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name })
+    });
+
+    const text = await res.text();
+    if (!res.ok) { msg.innerText = "新增失敗：" + text; return; }
+
+    msg.innerText = `✅ 新增成功（${id}｜${name}）`;
+
+    // ✅ 新增成功後，帶回登入欄位
+    document.getElementById("idInput").value = id;
+    document.getElementById("nameInput").value = name;
+
+    document.getElementById("newName").value = "";
+    await loadNextId();
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "新增失敗（請看 Console）";
+  }
 }
 
-async function login() {
-  const id = document.getElementById("idInput").value.trim();
-  const name = document.getElementById("nameInput").value.trim();
-  const msg = document.getElementById("loginMsg");
+/* ================== 輸入編號自動帶姓名 ================== */
+function bindIdAutoFill() {
+  const idEl = document.getElementById("idInput");
+  const nameEl = document.getElementById("nameInput");
+  let timer = null;
 
-  if (!id && !name) {
-    msg.innerText = "請輸入編號或姓名";
+  idEl.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const id = idEl.value.trim();
+      nameEl.value = "";
+      document.getElementById("loginMsg").innerText = "";
+
+      if (!id) return;
+
+      const user = await fetchUserById(id);
+      if (user) nameEl.value = user.name || "";
+      else document.getElementById("loginMsg").innerText = "找不到此編號";
+    }, 300);
+  });
+}
+
+/* ================== BLE / 遊戲區（你原本的） ================== */
+const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+const BTN_SERVICE_UUID = "1234c201-1fb5-459e-8fcc-c5c9c331914b";
+const BTN_NOTIFY_UUID  = "5678483e-36e1-4688-b7f5-ea07361b26a8";
+const BTN_VOL_UUID     = "9012483e-36e1-4688-b7f5-ea07361b26a8";
+const BTN_TARGET_UUID  = "3456483e-36e1-4688-b7f5-ea07361b26a8";
+
+let ledChar = null;
+let volChar = null;
+let targetChar = null;
+
+let isPlaying = false;
+let song = [];
+let index = 0;
+let startTime = 0;
+let timerInt = null;
+
+function log(msg) {
+  const el = document.getElementById("debugText");
+  if (el) el.innerText = msg;
+  console.log(msg);
+}
+
+async function connectLed() {
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "ESP32_LED_Control" }],
+      optionalServices: [LED_UUID]
+    });
+    const srv = await dev.gatt.connect();
+    const svc = await srv.getPrimaryService(LED_UUID);
+    ledChar = await svc.getCharacteristic(LED_CHAR);
+
+    document.getElementById("ledStatus").innerHTML = "已連線 ✅";
+    document.getElementById("ledStatus").className = "status-ok";
+    checkReady();
+  } catch (e) {
+    alert("LED連線失敗: " + e);
+  }
+}
+
+async function connectBtn() {
+  try {
+    const dev = await navigator.bluetooth.requestDevice({
+      filters: [{ name: "ESP32_Button_Input" }],
+      optionalServices: [BTN_SERVICE_UUID]
+    });
+    const srv = await dev.gatt.connect();
+    const svc = await srv.getPrimaryService(BTN_SERVICE_UUID);
+
+    const notifyChar = await svc.getCharacteristic(BTN_NOTIFY_UUID);
+    await notifyChar.startNotifications();
+    notifyChar.addEventListener("characteristicvaluechanged", onBtnPress);
+
+    try { volChar = await svc.getCharacteristic(BTN_VOL_UUID); updateVolume(25); } catch(e){}
+    try { targetChar = await svc.getCharacteristic(BTN_TARGET_UUID); } catch(e){ log("找不到 Target 特徵!"); }
+
+    document.getElementById("btnStatus").innerHTML = "已連線 ✅";
+    document.getElementById("btnStatus").className = "status-ok";
+    checkReady();
+  } catch (e) {
+    alert("按鈕連線失敗: " + e);
+  }
+}
+
+function checkReady() {
+  if (ledChar || document.getElementById("btnStatus").className.includes("status-ok")) {
+    document.getElementById("hardwareTest").style.display = "block";
+  }
+  if (ledChar && document.getElementById("btnStatus").className.includes("status-ok")) {
+    document.getElementById("startBtn").style.display = "inline-block";
+  }
+}
+
+function testLed(num) {
+  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(num)));
+  else alert("LED板尚未連線！");
+}
+
+function toggleSoundTest(checkbox) {
+  if (!targetChar) { alert("按鈕板尚未連線！"); checkbox.checked = false; return; }
+
+  if (checkbox.checked) {
+    targetChar.writeValue(new TextEncoder().encode("99"));
+    log("開啟聲音測試 (自由模式)");
+  } else {
+    targetChar.writeValue(new TextEncoder().encode("0"));
+    log("關閉聲音測試");
+  }
+}
+
+function updateVolume(val) {
+  document.getElementById("volVal").innerText = val;
+  if (volChar) volChar.writeValue(new TextEncoder().encode(String(val)));
+}
+
+function startGame() {
+  document.getElementById("soundTestToggle").checked = false;
+
+  song = document.getElementById("songSelect").value
+    .split(",")
+    .map(s => s.trim())
+    .filter(s => s !== "")
+    .map(Number);
+
+  index = 0;
+  isPlaying = true;
+
+  document.getElementById("controlBox").style.display = "none";
+  document.getElementById("hardwareTest").style.display = "none";
+  document.getElementById("gameArea").style.display = "block";
+
+  startTime = Date.now();
+  timerInt = setInterval(() => {
+    const t = (Date.now() - startTime) / 1000;
+    document.getElementById("timeDisplay").innerText = t.toFixed(2);
+  }, 30);
+
+  playNote();
+}
+
+function stopGame() {
+  if (timerInt) { clearInterval(timerInt); timerInt = null; }
+
+  isPlaying = false;
+  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
+
+  document.getElementById("gameArea").style.display = "none";
+  document.getElementById("controlBox").style.display = "block";
+  document.getElementById("hardwareTest").style.display = "block";
+}
+
+function playNote() {
+  if (index >= song.length) {
+    if (timerInt) { clearInterval(timerInt); timerInt = null; }
+    if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
+    setTimeout(finishGame, 300);
     return;
   }
 
-  msg.innerText = "查詢中...";
+  const target = song[index];
+  document.getElementById("currentNote").innerText = target;
+  document.getElementById("logMsg").innerText = "目標: " + target;
 
-  try {
-    const res = await fetch(
-      `/test/api/login.php?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`,
-      { cache: "no-store" }
-    );
-
-    if (!res.ok) {
-      msg.innerText = "查詢失敗";
-      return;
-    }
-
-    const user = await res.json();
-
-    if (!user) {
-      msg.innerText = "找不到此玩家";
-      return;
-    }
-
-    // ✅ 存起來
-    localStorage.setItem("userId", user.id);
-    localStorage.setItem("userName", user.name);
-
-    // ✅ 自動帶出
-    document.getElementById("idInput").value = user.id;
-    document.getElementById("nameInput").value = user.name;
-    document.getElementById("userName").innerText = `${user.id}｜${user.name}`;
-
-    showApp();
-
-    msg.innerText = "";
-
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "登入錯誤（請看 Console）";
-  }
+  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(target)));
+  if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(target)));
+  else log("警告: 無法設定 Target，聲音可能不會出來");
 }
 
+function onBtnPress(event) {
+  const val = new TextDecoder().decode(event.target.value);
+  const pressed = parseInt(val, 10);
 
-    const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
-    const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-    
-    const BTN_SERVICE_UUID = "1234c201-1fb5-459e-8fcc-c5c9c331914b";
-    const BTN_NOTIFY_UUID  = "5678483e-36e1-4688-b7f5-ea07361b26a8"; 
-    const BTN_VOL_UUID     = "9012483e-36e1-4688-b7f5-ea07361b26a8";
-    const BTN_TARGET_UUID  = "3456483e-36e1-4688-b7f5-ea07361b26a8"; 
+  document.getElementById("lastPressed").innerText = pressed;
+  if (!isPlaying) return;
 
-    let ledChar = null;
-    let volChar = null; 
-    let targetChar = null;
-    
-    let isPlaying = false;
-    let song = [];
-    let index = 0;
-    let startTime = 0;
-    let timerInt = null;
-
-    function log(msg) { document.getElementById('debugText').innerText = msg; console.log(msg); }
-
-    async function connectLed() {
-        try {
-            const dev = await navigator.bluetooth.requestDevice({filters: [{name:'ESP32_LED_Control'}], optionalServices:[LED_UUID]});
-            const srv = await dev.gatt.connect();
-            const svc = await srv.getPrimaryService(LED_UUID);
-            ledChar = await svc.getCharacteristic(LED_CHAR);
-            document.getElementById('ledStatus').innerHTML = "已連線 ✅";
-            document.getElementById('ledStatus').className = "status-ok";
-            checkReady();
-        } catch(e){ alert("LED連線失敗: " + e); }
-    }
-
-    async function connectBtn() {
-        try {
-            const dev = await navigator.bluetooth.requestDevice({filters: [{name:'ESP32_Button_Input'}], optionalServices:[BTN_SERVICE_UUID]});
-            const srv = await dev.gatt.connect();
-            const svc = await srv.getPrimaryService(BTN_SERVICE_UUID);
-            
-            const notifyChar = await svc.getCharacteristic(BTN_NOTIFY_UUID);
-            await notifyChar.startNotifications();
-            notifyChar.addEventListener('characteristicvaluechanged', onBtnPress);
-            
-            try { volChar = await svc.getCharacteristic(BTN_VOL_UUID); updateVolume(25); } catch(e){}
-            try { targetChar = await svc.getCharacteristic(BTN_TARGET_UUID); } catch(e){ log("找不到 Target 特徵!"); }
-
-            document.getElementById('btnStatus').innerHTML = "已連線 ✅";
-            document.getElementById('btnStatus').className = "status-ok";
-            checkReady();
-        } catch(e){ alert("按鈕連線失敗: " + e); }
-    }
-
-    function checkReady() {
-        // 只要連上任一個裝置，就顯示測試區
-        if(ledChar || document.getElementById('btnStatus').className.includes("status-ok")){
-            document.getElementById('hardwareTest').style.display = 'block';
-        }
-        // 兩個都連上才能開始遊戲
-        if(ledChar && document.getElementById('btnStatus').className.includes("status-ok")){
-            document.getElementById('startBtn').style.display = "inline-block";
-        }
-    }
-
-    // --- 硬體測試功能 ---
-    function testLed(num) {
-        if(ledChar) ledChar.writeValue(new TextEncoder().encode(String(num)));
-        else alert("LED板尚未連線！");
-    }
-
-    function toggleSoundTest(checkbox) {
-        if(!targetChar) { alert("按鈕板尚未連線！"); checkbox.checked = false; return; }
-        
-        if(checkbox.checked) {
-            // 發送 99 給 ESP32，開啟自由發聲模式
-            targetChar.writeValue(new TextEncoder().encode("99"));
-            log("開啟聲音測試 (自由模式)");
-        } else {
-            // 發送 0，靜音模式
-            targetChar.writeValue(new TextEncoder().encode("0"));
-            log("關閉聲音測試");
-        }
-    }
-
-    function updateVolume(val) {
-        document.getElementById('volVal').innerText = val;
-        if(volChar) volChar.writeValue(new TextEncoder().encode(String(val)));
-    }
-
-    // --- 遊戲邏輯 ---
-    function startGame() {
-        // 開始遊戲前，先把測試開關關掉，避免衝突
-        document.getElementById('soundTestToggle').checked = false;
-        
-        song = document.getElementById('songSelect').value
-          .split(',')
-          .map(s => s.trim())
-          .filter(s => s !== "")
-          .map(Number);
-
-        index = 0;
-        isPlaying = true;
-        document.getElementById('controlBox').style.display = 'none';
-        document.getElementById('hardwareTest').style.display = 'none'; // 隱藏測試區
-        document.getElementById('gameArea').style.display = 'block';
-        
-        startTime = Date.now();
-        timerInt = setInterval(() => {
-            let t = (Date.now() - startTime) / 1000;
-            document.getElementById('timeDisplay').innerText = t.toFixed(2);
-        }, 30);
-        playNote();
-    }
-
-    function stopGame() {
-  // ✅ 停掉計時器
-  if (timerInt) {
-    clearInterval(timerInt);
-    timerInt = null;
+  const target = song[index];
+  if (pressed === target) {
+    index++;
+    setTimeout(playNote, 50);
+  } else {
+    document.getElementById("logMsg").innerText = "❌ 按錯了！(靜音)";
   }
-
-  isPlaying = false;
-  if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); // 靜音
-
-  document.getElementById('gameArea').style.display = 'none';
-  document.getElementById('controlBox').style.display = 'block';
-  document.getElementById('hardwareTest').style.display = 'block';
 }
-
-
-    function playNote() {
-        if(index >= song.length) {
-            clearInterval(timerInt);
-            if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); // 結束後靜音
-            setTimeout(finishGame, 1000);
-            return;
-        }
-        let target = song[index];
-        document.getElementById('currentNote').innerText = target;
-        document.getElementById('logMsg').innerText = "目標: " + target;
-        
-        // 1. 亮燈
-        if(ledChar) ledChar.writeValue(new TextEncoder().encode(String(target)));
-        // 2. 設定按鈕板的正確答案
-        if(targetChar) targetChar.writeValue(new TextEncoder().encode(String(target)));
-        else log("警告: 無法設定 Target，聲音可能不會出來");
-    }
-
-    function onBtnPress(event) {
-        let val = new TextDecoder().decode(event.target.value);
-        let pressed = parseInt(val);
-        
-        // 更新測試區顯示
-        document.getElementById('lastPressed').innerText = pressed;
-
-        if(!isPlaying) return; // 如果沒在玩遊戲，就只更新顯示
-
-        let target = song[index];
-        log("收到: " + pressed + " 目標: " + target);
-
-        if(pressed === target) {
-            index++;
-            setTimeout(playNote, 50); 
-        } else {
-            document.getElementById('logMsg').innerText = "❌ 按錯了！(靜音)";
-        }
-    }
 
 async function finishGame() {
-  console.log("[finishGame] called");
   isPlaying = false;
-  if(ledChar) ledChar.writeValue(new TextEncoder().encode('0'));
+  if (ledChar) ledChar.writeValue(new TextEncoder().encode("0"));
 
-  const seconds = parseFloat(document.getElementById('timeDisplay').innerText) || 0;
+  const seconds = parseFloat(document.getElementById("timeDisplay").innerText) || 0;
 
-  // 存到 MySQL
   await saveScore(seconds);
 
-  document.getElementById('currentNote').innerText = "🎉";
+  document.getElementById("currentNote").innerText = "🎉";
   setTimeout(() => {
     alert("恭喜完成！總時間: " + seconds.toFixed(2) + " 秒");
     stopGame();
-  }, 300);
+  }, 200);
 }
 
+/* ================== 頁面載入 ================== */
 window.addEventListener("load", () => {
-  // 自動帶入下一號（新增人員）
+  bindIdAutoFill();
   loadNextId();
 
-  // 自動登入（有存 localStorage 才進 app）
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
 
@@ -500,102 +553,9 @@ window.addEventListener("load", () => {
   } else {
     showLogin();
   }
-
-  // 綁「輸入編號自動帶名字」(只綁一次)
-  const idEl = document.getElementById("idInput");
-  const nameEl = document.getElementById("nameInput");
-  let t = null;
-
-  idEl.addEventListener("input", () => {
-    clearTimeout(t);
-    t = setTimeout(async () => {
-      const id = idEl.value.trim();
-      nameEl.value = "";
-      document.getElementById("loginMsg").innerText = "";
-      if (!id) return;
-
-      const user = await fetchUserById(id);
-      if (user) nameEl.value = user.name || "";
-      else document.getElementById("loginMsg").innerText = "找不到此編號";
-    }, 300);
-  });
 });
-
-
-
-  // ✅ 輸入編號就自動帶名字（停 300ms 再查，避免每打一個字就查）
-  let t = null;
-  idEl.addEventListener("input", () => {
-    clearTimeout(t);
-    t = setTimeout(async () => {
-      const id = idEl.value.trim();
-      nameEl.value = "";
-      document.getElementById("loginMsg").innerText = "";
-
-      if (!id) return;
-
-      const user = await fetchUserById(id);
-      if (user) {
-        nameEl.value = user.name || "";
-      } else {
-        // 找不到就顯示提示（你想要就留，不想要就刪）
-        document.getElementById("loginMsg").innerText = "找不到此編號";
-      }
-    }, 300);
-  });
-});
-
-async function loadNextId(){
-  const msg = document.getElementById("addMsg");
-  msg.innerText = "";
-
-  try{
-    const res = await fetch("/test/api/next_player_id.php", { cache:"no-store" });
-    if(!res.ok) throw new Error("next id api failed");
-    const data = await res.json();
-    document.getElementById("newId").value = data.next_id || "";
-  }catch(e){
-    console.error(e);
-    msg.innerText = "取得下一號失敗（請看 Console）";
-  }
-}
-async function addPlayer(){
-  const id = document.getElementById("newId").value.trim();
-  const name = document.getElementById("newName").value.trim();
-  const msg = document.getElementById("addMsg");
-
-  if(!id){ msg.innerText = "沒有自動編號"; return; }
-  if(!name){ msg.innerText = "請輸入姓名"; return; }
-
-  msg.innerText = "儲存中...";
-
-  try{
-    const res = await fetch("/test/api/add_player.php", {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({ id, name })
-    });
-
-    const text = await res.text();
-
-    if(!res.ok){
-      msg.innerText = "新增失敗: " + text;
-      return;
-    }
-
-    msg.innerText = "✅ 新增成功！編號=" + id + "，姓名=" + name;
-
-    // 清姓名、重新取得下一號
-    document.getElementById("newName").value = "";
-    await loadNextId();
-  }catch(e){
-    console.error(e);
-    msg.innerText = "新增失敗（請看 Console）";
-  }
-}
-
-
 </script>
+
 </body>
 </html>
 
