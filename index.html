@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 鋼琴遊戲 (含測試功能)</title>
+    <title> 鋼琴遊戲 </title>
     <style>
         body { font-family: 'Microsoft JhengHei', sans-serif; text-align: center; background: #222; color: white; padding-top: 20px;}
         .box { border: 1px solid #555; padding: 20px; margin: 15px auto; max-width: 500px; border-radius: 10px; background: #333; }
@@ -57,13 +57,27 @@
     </h2>
 
 
-    <div class="box">
-        <h3>1. 裝置連線與測試</h3>
-        <p>LED板: <span id="ledStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectLed()">連接</button></p>
-        <p>按鈕板: <span id="btnStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectBtn()">連接</button></p>
-              
-        </div>
-    </div>
+<div class="box">
+  <h3>1. 裝置連線</h3>
+
+  <p>
+    LED板: <span id="ledStatus">未連線 ❌</span>
+    <button class="btn-connect" onclick="connectLed()">連接</button>
+  </p>
+
+  <p>
+    按鈕板: <span id="btnStatus">未連線 ❌</span>
+    <button class="btn-connect" onclick="connectBtn()">連接</button>
+  </p>
+
+  <div style="margin-top:10px;">
+    🔊 音量: <span id="volVal">25</span>%
+    <br>
+    <input type="range" min="0" max="100" value="25" oninput="updateVolume(this.value)">
+  </div>
+</div>
+
+
  
 
     <div class="box" id="controlBox">
