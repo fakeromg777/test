@@ -179,9 +179,9 @@
         <p>除錯訊息: <span id="debugText">無</span></p>
     </div>
 </div>
+
 <script>
 function logout(){
-  // 如果正在玩，先停掉（避免計時器/藍牙狀態怪）
   try { stopGame(); } catch(e) {}
 
   localStorage.removeItem("userId");
@@ -191,11 +191,9 @@ function logout(){
   document.getElementById("accountInput").value = "";
   document.getElementById("loginMsg").innerText = "已登出";
 
-
   document.getElementById("app").style.display = "none";
   document.getElementById("loginBox").style.display = "block";
 }
-
 
 async function saveScore(seconds) {
   const playerId = localStorage.getItem("userId");
@@ -204,7 +202,7 @@ async function saveScore(seconds) {
 
   if(!playerId || !playerName) return;
 
-  const res = await fetch(`/api/save_score.php`, {
+  const res = await fetch(`./api/save_score.php`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -219,51 +217,20 @@ async function saveScore(seconds) {
     const t = await res.text();
     log("存分數失敗: " + t);
   }else{
-    log("已存分數: " + seconds);
-  }
-}
-
-
-  const payload = [{
-    player_id: playerId,
-    player_name: playerName,
-    song_name: songName,
-    seconds: Number(seconds)
-  }];
-
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
-    method: "POST",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if(!res.ok){
     const t = await res.text();
-    log("存分數失敗: " + t);
-  }else{
-    log("已存分數: " + seconds);
+    log("已存分數: " + t);
   }
 }
 
 async function fetchUserById(id) {
-  const res = await fetch(`/api/login.php?id=${encodeURIComponent(id)}`);
+  const res = await fetch(`./api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
   if(!res.ok) return null;
 
   const data = await res.json();
-  // data 可能是 null
   return data && data.id ? data : null;
 }
 
-
-  const data = await res.json();
-  return data.length > 0 ? data[0] : null;
-}
-    async function login() {
+async function login() {
   const acc = document.getElementById("accountInput").value.trim();
   const msg = document.getElementById("loginMsg");
 
@@ -271,19 +238,23 @@ async function fetchUserById(id) {
 
   msg.innerText = "查詢中...";
 
-  const user = await fetchUserById(acc);
+  try {
+    const user = await fetchUserById(acc);
 
-  if (!user) { msg.innerText = "此編號不存在"; return; }
+    if (!user) { msg.innerText = "此編號不存在"; return; }
 
-  localStorage.setItem("userId", user.id);
-  localStorage.setItem("userName", user.name);
+    localStorage.setItem("userId", user.id);
+    localStorage.setItem("userName", user.name);
 
-  document.getElementById("userName").innerText = user.name;
+    document.getElementById("userName").innerText = user.name;
 
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  
-
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    msg.innerText = "";
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "登入失敗（請按 F12 看 Console）";
+  }
 }
 
     const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
@@ -447,16 +418,14 @@ async function fetchUserById(id) {
         }
     }
 
-   async function finishGame() {
+async function finishGame() {
   isPlaying = false;
   if(ledChar) ledChar.writeValue(new TextEncoder().encode('0'));
 
-  // 取得秒數（用畫面上的 timeDisplay 最直覺）
   const seconds = parseFloat(document.getElementById('timeDisplay').innerText) || 0;
 
-  // 存到 Supabase
+  // 存到 MySQL
   await saveScore(seconds);
-
 
   document.getElementById('currentNote').innerText = "🎉";
   setTimeout(() => {
@@ -465,9 +434,7 @@ async function fetchUserById(id) {
   }, 300);
 }
 
-
-
-   window.addEventListener("load", async () => {
+window.addEventListener("load", () => {
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
   if(savedId && savedName){
@@ -475,7 +442,8 @@ async function fetchUserById(id) {
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("app").style.display = "block";
   }
-}); 
+});
+
 
 
 </script>
