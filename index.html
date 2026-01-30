@@ -145,7 +145,13 @@
 <label>結束</label>
 <input id="toDT" type="datetime-local" step="3600"
        style="padding:8px; font-size:14px;">
-  
+  <label style="margin-left:10px;">模式</label>
+<select id="reportMode" style="padding:10px; font-size:16px;" onchange="loadReport()">
+  <option value="daily_best">每天最佳(最短)</option>
+  <option value="each_try" selected>每次紀錄(到小時)</option>
+  <option value="hour_best">每小時最佳</option>
+</select>
+
 </select>
 
    
@@ -617,13 +623,12 @@ async function loadReport() {
   const songName = document.getElementById("reportSongSelect")?.value ?? "";
   const fromDT = document.getElementById("fromDT")?.value || "";
   const toDT   = document.getElementById("toDT")?.value || "";
-  // ✅ 用你現有的 get_scores.php
-  // 常見參數：player_id / song_name
-  // 如果你的 php 用的是 id / song 也沒關係，下面會再提供你要改哪裡
+  const mode   = document.getElementById("reportMode")?.value || "daily_best";
+
   const url = `/test/api/get_scores.php?player_id=${encodeURIComponent(playerId)}`
-  + `&song_name=${encodeURIComponent(songName)}`
-  + `&from=${encodeURIComponent(fromDT)}`
-  + `&to=${encodeURIComponent(toDT)}`;
+    + `&song_name=${encodeURIComponent(songName)}`
+    + `&from=${encodeURIComponent(fromDT)}`
+    + `&to=${encodeURIComponent(toDT)}`;
 
   let rows = [];
   try {
@@ -637,35 +642,79 @@ async function loadReport() {
     return;
   }
 
-  // ✅ 彙整成「每天最佳（最短）」
-  const bestByDate = new Map(); // date -> bestSeconds
-  for (const r of rows) {
-    const d = pickDate(r);
-    const s = pickSeconds(r);
-    if (!d || isNaN(s)) continue;
+  // ✅ 將資料標準化（你 DB 欄位就是 seconds / created_at）
+  const parsed = rows
+    .map(r => ({
+      seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
+      created_at: String(r.created_at ?? r.play_date ?? r.date ?? "")
+    }))
+    .filter(x => !isNaN(x.seconds) && x.created_at);
 
-    const prev = bestByDate.get(d);
-    if (prev == null || s < prev) bestByDate.set(d, s);
-  }
+  // ✅ 依模式產生 labels/data
+  let labels = [];
+  let data = [];
+  let xTitle = "日期";
 
-  const labels = Array.from(bestByDate.keys()).sort();
-  const data = labels.map(d => bestByDate.get(d));
+  if (mode === "daily_best") {
+    // 每天最佳（最短）
+    const bestByDate = new Map(); // YYYY-MM-DD -> bestSeconds
+    for (const it of parsed) {
+      const d = it.created_at.slice(0, 10); // 2026-01-30
+      const prev = bestByDate.get(d);
+      if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
+    }
+    labels = Array.from(bestByDate.keys()).sort();
+    data = labels.map(d => bestByDate.get(d));
+    xTitle = "日期";
 
-  if (labels.length === 0) {
-    if (msgEl) msgEl.textContent = "目前沒有資料（先玩一局並存分數後再看）";
+  } else if (mode === "each_try") {
+    // 每次紀錄（到「小時」）
+    parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    labels = parsed.map(it => it.created_at.slice(0, 13)); // "2026-01-30 15"
+    data = parsed.map(it => it.seconds);
+    xTitle = "日期(到小時)";
+
+  } else if (mode === "hour_best") {
+    // 每小時最佳（最短）
+    const bestByHour = new Map(); // "YYYY-MM-DD HH" -> bestSeconds
+    for (const it of parsed) {
+      const h = it.created_at.slice(0, 13); // 2026-01-30 15
+      const prev = bestByHour.get(h);
+      if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
+    }
+    labels = Array.from(bestByHour.keys()).sort();
+    data = labels.map(h => bestByHour.get(h));
+    xTitle = "日期(到小時)";
   }
 
   const canvas = document.getElementById("reportChart");
   if (!canvas) return;
 
-  if (progressChart) progressChart.destroy();
+  if (progressChart) {
+    progressChart.destroy();
+    progressChart = null;
+  }
+
+  if (labels.length === 0) {
+    if (msgEl) msgEl.textContent = "目前沒有資料（請調整時間範圍或先玩一局再看）";
+    // 沒資料就畫空圖（避免留著舊圖誤會）
+    progressChart = new Chart(canvas, {
+      type: "line",
+      data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
+      options: { responsive: true }
+    });
+    return;
+  }
 
   progressChart = new Chart(canvas, {
     type: "line",
     data: {
       labels,
       datasets: [{
-        label: "每天最佳秒數（越低越好）",
+        label:
+          mode === "daily_best" ? "每天最佳秒數（越低越好）" :
+          mode === "hour_best"  ? "每小時最佳秒數（越低越好）" :
+                                  "每次秒數（越低越好）",
         data,
         borderWidth: 2,
         tension: 0.3
@@ -675,11 +724,15 @@ async function loadReport() {
       responsive: true,
       scales: {
         y: { title: { display: true, text: "秒數" } },
-        x: { title: { display: true, text: "日期" } }
+        x: {
+          title: { display: true, text: xTitle },
+          ticks: { autoSkip: true, maxRotation: 0 }
+        }
       }
     }
   });
 }
+
 
 /* ================== 頁面載入 ================== */
 window.addEventListener("load", () => {
