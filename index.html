@@ -30,10 +30,18 @@
 </head>
 <body>
     <div id="loginBox">
-        <input id="accountInput">
-        <button onclick="login()">登入</button>
-        <p id="loginMsg"></p>
-    </div>
+  <div style="margin-bottom:10px;">
+    <input id="idInput" placeholder="玩家編號" style="width:120px;">
+  </div>
+
+  <div style="margin-bottom:10px;">
+    <input id="nameInput" placeholder="玩家姓名" style="width:120px;">
+  </div>
+
+  <button onclick="login()">登入</button>
+  <p id="loginMsg"></p>
+</div>
+
 
 
   <div id="app" style="display:none;">
@@ -232,31 +240,54 @@ async function fetchUserById(id) {
 }
 
 async function login() {
-  const acc = document.getElementById("accountInput").value.trim();
+  const id = document.getElementById("idInput").value.trim();
+  const name = document.getElementById("nameInput").value.trim();
   const msg = document.getElementById("loginMsg");
 
-  if (!acc) { msg.innerText = "請輸入編號"; return; }
+  if (!id && !name) {
+    msg.innerText = "請輸入編號或姓名";
+    return;
+  }
 
   msg.innerText = "查詢中...";
 
   try {
-    const user = await fetchUserById(acc);
+    const res = await fetch(
+      `/test/api/login.php?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`,
+      { cache: "no-store" }
+    );
 
-    if (!user) { msg.innerText = "此編號不存在"; return; }
+    if (!res.ok) {
+      msg.innerText = "查詢失敗";
+      return;
+    }
 
+    const user = await res.json();
+
+    if (!user) {
+      msg.innerText = "找不到此玩家";
+      return;
+    }
+
+    // ✅ 存起來
     localStorage.setItem("userId", user.id);
     localStorage.setItem("userName", user.name);
 
-    document.getElementById("userName").innerText = user.name;
+    // ✅ 自動帶出
+    document.getElementById("idInput").value = user.id;
+    document.getElementById("nameInput").value = user.name;
+    document.getElementById("userName").innerText = `${user.id}｜${user.name}`;
 
     document.getElementById("loginBox").style.display = "none";
     document.getElementById("app").style.display = "block";
     msg.innerText = "";
+
   } catch (e) {
     console.error(e);
-    msg.innerText = "登入失敗（請按 F12 看 Console）";
+    msg.innerText = "登入錯誤（請看 Console）";
   }
 }
+
 
     const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
     const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
