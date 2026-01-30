@@ -230,15 +230,19 @@ async function fetchUserById(id) {
 /* ================== 登入 ================== */
 async function login() {
   const id = document.getElementById("idInput").value.trim();
+  const name = document.getElementById("nameInput").value.trim();
   const msg = document.getElementById("loginMsg");
 
-  if (!id) { msg.innerText = "請輸入編號"; return; }
-
+  if (!id && !name) { msg.innerText = "請輸入編號或姓名"; return; }
   msg.innerText = "查詢中...";
 
   try {
-    const user = await fetchUserById(id);
-    if (!user) { msg.innerText = "找不到此編號"; return; }
+    let user = null;
+
+    if (id) user = await fetchUserById(id);
+    else user = await fetchUserByName(name);
+
+    if (!user) { msg.innerText = "找不到此玩家"; return; }
 
     localStorage.setItem("userId", user.id);
     localStorage.setItem("userName", user.name);
@@ -254,6 +258,7 @@ async function login() {
     msg.innerText = "登入失敗（請看 Console）";
   }
 }
+
 
 /* ================== 存分數 ================== */
 async function saveScore(seconds) {
