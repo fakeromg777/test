@@ -29,18 +29,13 @@
     </style>
 </head>
 <body>
-    <div id="loginBox">
-  <div style="margin-bottom:10px;">
-    <input id="idInput" placeholder="玩家編號" style="width:120px;">
-  </div>
-
-  <div style="margin-bottom:10px;">
-    <input id="nameInput" placeholder="玩家姓名" style="width:120px;">
-  </div>
-
+<div id="loginBox">
+  <input id="idInput" placeholder="輸入編號" />
+  <input id="nameInput" placeholder="玩家姓名" readonly />
   <button onclick="login()">登入</button>
   <p id="loginMsg"></p>
 </div>
+
 
 
 
@@ -482,6 +477,76 @@ window.addEventListener("load", () => {
   }
 });
 
+window.addEventListener("load", () => {
+  const idEl = document.getElementById("idInput");
+  const nameEl = document.getElementById("nameInput");
+
+  // 你原本的自動登入顯示也放這裡
+  const savedId = localStorage.getItem("userId");
+  const savedName = localStorage.getItem("userName");
+  if (savedId && savedName) {
+    document.getElementById("userName").innerText = savedName;
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+
+  // ✅ 輸入編號就自動帶名字（停 300ms 再查，避免每打一個字就查）
+  let t = null;
+  idEl.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const id = idEl.value.trim();
+      nameEl.value = "";
+      document.getElementById("loginMsg").innerText = "";
+
+      if (!id) return;
+
+      const user = await fetchUserById(id);
+      if (user) {
+        nameEl.value = user.name || "";
+      } else {
+        // 找不到就顯示提示（你想要就留，不想要就刪）
+        document.getElementById("loginMsg").innerText = "找不到此編號";
+      }
+    }, 300);
+  });
+});
+async function fetchUserById(id) {
+  const res = await fetch(`./api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+  if(!res.ok) return null;
+  const data = await res.json();
+  return data && data.id ? data : null;
+}
+async function login() {
+  const idEl = document.getElementById("idInput");
+  const nameEl = document.getElementById("nameInput");
+  const msg = document.getElementById("loginMsg");
+
+  const acc = idEl.value.trim();
+  if (!acc) { msg.innerText = "請輸入編號"; return; }
+
+  msg.innerText = "查詢中...";
+
+  try {
+    const user = await fetchUserById(acc);
+    if (!user) { msg.innerText = "此編號不存在"; return; }
+
+    // ✅ 帶出名字（以資料庫為準）
+    nameEl.value = user.name || "";
+
+    localStorage.setItem("userId", user.id);
+    localStorage.setItem("userName", user.name);
+
+    document.getElementById("userName").innerText = user.name;
+
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    msg.innerText = "";
+  } catch (e) {
+    console.error(e);
+    msg.innerText = "登入失敗（請看 Console）";
+  }
+}
 
 
 </script>
