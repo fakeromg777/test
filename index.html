@@ -176,6 +176,16 @@
 </div>
 
 <script>
+(function autoLogoutOnReload() {
+  const nav = performance.getEntriesByType("navigation")[0];
+  const isReload = nav && nav.type === "reload";
+
+  if (isReload) {
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
+  }
+})();
+
 /* ================== 畫面切換 ================== */
 function showLogin() {
   document.getElementById("app").style.display = "none";
@@ -472,9 +482,7 @@ function updateVolume(val) {
 }
 
 function startGame() {
-  localStorage.removeItem("gameState");
-  localStorage.setItem("gameState", "playing");
-
+ 
   document.getElementById("soundTestToggle").checked = false;
 
   song = document.getElementById("songSelect").value
