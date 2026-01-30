@@ -202,7 +202,7 @@ async function saveScore(seconds) {
 
   if(!playerId || !playerName) return;
 
-  const res = await fetch(`./api/save_score.php`, {
+  const res = await fetch(`/test/api/save_score.php`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -223,7 +223,7 @@ async function saveScore(seconds) {
 }
 
 async function fetchUserById(id) {
-  const res = await fetch(`./api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+  const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
   if(!res.ok) return null;
 
   const data = await res.json();
