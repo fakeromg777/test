@@ -35,16 +35,17 @@
   <button onclick="login()">登入</button>
   <p id="loginMsg"></p>
 </div>
+
 <div id="addBox" style="margin-top:20px;">
   <h3 style="color:#fff;">➕ 新增人員</h3>
 
   <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
-    <input id="newId" placeholder="自動編號" readonly style="width:160px; padding:8px;">
-    <input id="newName" placeholder="輸入姓名" style="width:200px; padding:8px;">
-    <button onclick="addPlayer()" style="padding:10px 18px;">儲存</button>
+    <input id="newId" placeholder="自動編號" readonly>
+    <input id="newName" placeholder="輸入姓名">
+    <button onclick="addPlayer()">儲存</button>
   </div>
 
-  <p id="addMsg" style="margin-top:10px; color:#ffd966;"></p>
+  <p id="addMsg"></p>
 </div>
 
   <div id="app" style="display:none;">
@@ -203,21 +204,14 @@ function showApp() {
 function logout(){
   try { stopGame(); } catch(e) {}
 
-  // 清 localStorage
   localStorage.removeItem("userId");
   localStorage.removeItem("userName");
 
-  // 🔹 清登入輸入框
-  document.getElementById("accountInput").value = "";
+  document.getElementById("idInput").value = "";
   document.getElementById("nameInput").value = "";
-
-  // 🔹 清登入訊息
   document.getElementById("loginMsg").innerText = "";
-
-  // 🔹 清上方玩家顯示
   document.getElementById("userName").innerText = "---";
 
-  // 🔹 切回登入畫面
   showLogin();
 }
 
@@ -493,27 +487,41 @@ async function finishGame() {
 }
 
 window.addEventListener("load", () => {
+  // 自動帶入下一號（新增人員）
+  loadNextId();
+
+  // 自動登入（有存 localStorage 才進 app）
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
-  if(savedId && savedName){
-    document.getElementById("userName").innerText = savedName;
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }
-});
 
-window.addEventListener("load", () => {
+  if (savedId && savedName) {
+    document.getElementById("userName").innerText = `${savedId}｜${savedName}`;
+    showApp();
+  } else {
+    showLogin();
+  }
+
+  // 綁「輸入編號自動帶名字」(只綁一次)
   const idEl = document.getElementById("idInput");
   const nameEl = document.getElementById("nameInput");
+  let t = null;
 
-  // 你原本的自動登入顯示也放這裡
-  const savedId = localStorage.getItem("userId");
-  const savedName = localStorage.getItem("userName");
-  if (savedId && savedName) {
-    document.getElementById("userName").innerText = savedName;
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }
+  idEl.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      const id = idEl.value.trim();
+      nameEl.value = "";
+      document.getElementById("loginMsg").innerText = "";
+      if (!id) return;
+
+      const user = await fetchUserById(id);
+      if (user) nameEl.value = user.name || "";
+      else document.getElementById("loginMsg").innerText = "找不到此編號";
+    }, 300);
+  });
+});
+
+
 
   // ✅ 輸入編號就自動帶名字（停 300ms 再查，避免每打一個字就查）
   let t = null;
@@ -536,42 +544,6 @@ window.addEventListener("load", () => {
     }, 300);
   });
 });
-async function fetchUserById(id) {
-  const res = await fetch(`./api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-  if(!res.ok) return null;
-  const data = await res.json();
-  return data && data.id ? data : null;
-}
-async function login() {
-  const idEl = document.getElementById("idInput");
-  const nameEl = document.getElementById("nameInput");
-  const msg = document.getElementById("loginMsg");
-
-  const acc = idEl.value.trim();
-  if (!acc) { msg.innerText = "請輸入編號"; return; }
-
-  msg.innerText = "查詢中...";
-
-  try {
-    const user = await fetchUserById(acc);
-    if (!user) { msg.innerText = "此編號不存在"; return; }
-
-    // ✅ 帶出名字（以資料庫為準）
-    nameEl.value = user.name || "";
-
-    localStorage.setItem("userId", user.id);
-    localStorage.setItem("userName", user.name);
-
-    document.getElementById("userName").innerText = user.name;
-
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    msg.innerText = "";
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "登入失敗（請看 Console）";
-  }
-}
 
 async function loadNextId(){
   const msg = document.getElementById("addMsg");
@@ -621,17 +593,7 @@ async function addPlayer(){
     msg.innerText = "新增失敗（請看 Console）";
   }
 }
-window.addEventListener("load", () => {
-  const savedId = localStorage.getItem("userId");
-  const savedName = localStorage.getItem("userName");
-  if(savedId && savedName){
-    document.getElementById("userName").innerText = savedName;
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }
 
-  loadNextId(); // ✅ 新增這行
-});
 
 </script>
 </body>
