@@ -610,6 +610,16 @@ function pickDate(row) {
   return null;
 }
 
+function turnOffLed() {
+  if (ledChar) {
+    try {
+      ledChar.writeValue(new TextEncoder().encode("0"));
+    } catch (e) {
+      console.warn("關燈失敗", e);
+    }
+  }
+}
+    
 async function loadReport() {
   const msgEl = document.getElementById("reportMsg");
   if (msgEl) msgEl.textContent = "";
