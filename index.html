@@ -45,7 +45,7 @@
         登出
       </button>
     </h2>
-
+<button onclick="saveScore(12.34)">測試存分數</button>
 
     <div class="box">
         <h3>1. 裝置連線與測試</h3>
@@ -196,6 +196,7 @@ function logout(){
 }
 
 async function saveScore(seconds) {
+  console.log("[saveScore] seconds=", seconds);
   const playerId = localStorage.getItem("userId");
   const playerName = localStorage.getItem("userName");
   const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
@@ -349,7 +350,12 @@ async function login() {
         // 開始遊戲前，先把測試開關關掉，避免衝突
         document.getElementById('soundTestToggle').checked = false;
         
-        song = document.getElementById('songSelect').value.split(',').map(Number);
+        song = document.getElementById('songSelect').value
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s !== "")
+          .map(Number);
+
         index = 0;
         isPlaying = true;
         document.getElementById('controlBox').style.display = 'none';
@@ -419,6 +425,7 @@ async function login() {
     }
 
 async function finishGame() {
+  console.log("[finishGame] called");
   isPlaying = false;
   if(ledChar) ledChar.writeValue(new TextEncoder().encode('0'));
 
