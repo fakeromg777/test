@@ -61,31 +61,7 @@
         <h3>1. 裝置連線與測試</h3>
         <p>LED板: <span id="ledStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectLed()">連接</button></p>
         <p>按鈕板: <span id="btnStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectBtn()">連接</button></p>
-        
-        <div id="hardwareTest" class="test-panel">
-            <h4>🔧 硬體測試區</h4>
-            <p>測試燈號 (點擊亮燈):</p>
-            <button class="test-btn" onclick="testLed(1)">1 (藍)</button>
-            <button class="test-btn" onclick="testLed(2)">2 (紅)</button>
-            <button class="test-btn" onclick="testLed(3)">3 (黃)</button>
-            <button class="test-btn" onclick="testLed(4)">4 (綠)</button>
-            <button class="test-btn" onclick="testLed(5)">5 (白)</button>
-            <button class="test-btn" onclick="testLed(0)">關燈</button>
-            
-            <p style="margin-top:15px; border-top:1px solid #666; padding-top:10px;">
-                測試聲音與按鈕:<br>
-                <label style="font-size:18px; color:#00d2ff;">
-                    <input type="checkbox" id="soundTestToggle" onchange="toggleSoundTest(this)"> 
-                    開啟聲音測試 (自由發聲)
-                </label>
-            </p>
-            <p>最後按下的按鈕: <span id="lastPressed" style="font-size:24px; color:yellow; font-weight:bold;">-</span></p>
-
-            <div style="margin-top:10px;">
-                🔊 音量: <span id="volVal">25</span>%
-                <br>
-                <input type="range" min="0" max="100" value="25" oninput="updateVolume(this.value)">
-            </div>
+              
         </div>
     </div>
  
