@@ -36,17 +36,12 @@
   <p id="loginMsg"></p>
 </div>
 
-
-
-
   <div id="app" style="display:none;">
   
     <h1>🎵 ESP32 鋼琴挑戰 (測試版)</h1>
     <h2>👤 玩家：<span id="userName">---</span> 
-        <button onclick="logout()" 
-        style="margin-left:10px; background:#555; color:white; padding:6px 12px; border-radius:6px;">
-        登出
-      </button>
+        <button type="button" onclick="logout()">登出</button>
+
     </h2>
 
 
@@ -184,19 +179,31 @@
 </div>
 
 <script>
+function showLogin() {
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginBox").style.display = "block";
+}
+
+function showApp() {
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("app").style.display = "block";
+}
+
 function logout(){
   try { stopGame(); } catch(e) {}
 
   localStorage.removeItem("userId");
   localStorage.removeItem("userName");
 
+  // 清畫面文字
   document.getElementById("userName").innerText = "---";
-  document.getElementById("accountInput").value = "";
-  document.getElementById("loginMsg").innerText = "已登出";
+  const msg = document.getElementById("loginMsg");
+  if (msg) msg.innerText = "已登出";
 
-  document.getElementById("app").style.display = "none";
-  document.getElementById("loginBox").style.display = "block";
+  // ✅ 強制回登入畫面
+  showLogin();
 }
+
 
 async function saveScore(seconds) {
   console.log("[saveScore] seconds=", seconds);
@@ -273,8 +280,8 @@ async function login() {
     document.getElementById("nameInput").value = user.name;
     document.getElementById("userName").innerText = `${user.id}｜${user.name}`;
 
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
+    showApp();
+
     msg.innerText = "";
 
   } catch (e) {
