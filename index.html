@@ -31,7 +31,7 @@
 <body>
 <div id="loginBox">
   <input id="idInput" placeholder="輸入編號" />
-  <input id="nameInput" placeholder="玩家姓名" readonly />
+  <input id="nameInput" placeholder="玩家姓名"  />
   <button onclick="login()">登入</button>
   <p id="loginMsg"></p>
 </div>
@@ -299,6 +299,35 @@ async function loadNextId() {
     msg.innerText = "取得下一號失敗（請看 Console）";
   }
 }
+async function fetchUserByName(name) {
+  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return await res.json(); // {id,name} 或 null
+}
+
+function bindNameAutoFill() {
+  const idEl = document.getElementById("idInput");
+  const nameEl = document.getElementById("nameInput");
+  let timer = null;
+
+  nameEl.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const name = nameEl.value.trim();
+      document.getElementById("loginMsg").innerText = "";
+
+      if (!name) return;
+
+      const user = await fetchUserByName(name);
+      if (user) {
+        idEl.value = user.id || "";
+        nameEl.value = user.name || nameEl.value; // 以DB為準
+      } else {
+        document.getElementById("loginMsg").innerText = "找不到此姓名";
+      }
+    }, 300);
+  });
+}
 
 /* ================== 新增人員：存回 DB ================== */
 async function addPlayer() {
@@ -542,6 +571,7 @@ async function finishGame() {
 /* ================== 頁面載入 ================== */
 window.addEventListener("load", () => {
   bindIdAutoFill();
+  bindNameAutoFill();
   loadNextId();
 
   const savedId = localStorage.getItem("userId");
