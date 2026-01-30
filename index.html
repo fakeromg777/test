@@ -196,14 +196,33 @@ function logout(){
   document.getElementById("loginBox").style.display = "block";
 }
 
-const SUPABASE_URL = "https://rqeccfpfhqgvjypiwepg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_lmFnUceilhC48GOf4MT2Iw_kWsELN3o";
-async function saveScoreToSupabase(seconds) {
+
+async function saveScore(seconds) {
   const playerId = localStorage.getItem("userId");
   const playerName = localStorage.getItem("userName");
   const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
 
   if(!playerId || !playerName) return;
+
+  const res = await fetch(`/api/save_score.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      player_id: playerId,
+      player_name: playerName,
+      song_name: songName,
+      seconds: Number(seconds)
+    })
+  });
+
+  if(!res.ok){
+    const t = await res.text();
+    log("存分數失敗: " + t);
+  }else{
+    log("已存分數: " + seconds);
+  }
+}
+
 
   const payload = [{
     player_id: playerId,
@@ -232,15 +251,14 @@ async function saveScoreToSupabase(seconds) {
 }
 
 async function fetchUserById(id) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/players?id=eq.${encodeURIComponent(id)}&select=id,name`,
-    {
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-      }
-    }
-  );
+  const res = await fetch(`/api/login.php?id=${encodeURIComponent(id)}`);
+  if(!res.ok) return null;
+
+  const data = await res.json();
+  // data 可能是 null
+  return data && data.id ? data : null;
+}
+
 
   const data = await res.json();
   return data.length > 0 ? data[0] : null;
@@ -437,7 +455,8 @@ async function fetchUserById(id) {
   const seconds = parseFloat(document.getElementById('timeDisplay').innerText) || 0;
 
   // 存到 Supabase
-  await saveScoreToSupabase(seconds);
+  await saveScore(seconds);
+
 
   document.getElementById('currentNote').innerText = "🎉";
   setTimeout(() => {
@@ -445,6 +464,8 @@ async function fetchUserById(id) {
     stopGame();
   }, 300);
 }
+
+
 
    window.addEventListener("load", async () => {
   const savedId = localStorage.getItem("userId");
