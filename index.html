@@ -243,15 +243,18 @@ async function fetchUserById(id) {
 /* ================== 登入 ================== */
 async function login() {
   const id = document.getElementById("idInput").value.trim();
+  const name = document.getElementById("nameInput").value.trim();
   const msg = document.getElementById("loginMsg");
 
-  if (!id) { msg.innerText = "請輸入編號"; return; }
-
+  if (!id && !name) { msg.innerText = "請輸入編號或姓名"; return; }
   msg.innerText = "查詢中...";
 
   try {
-    const user = await fetchUserById(id);
-    if (!user) { msg.innerText = "找不到此編號"; return; }
+    let user = null;
+    if (id) user = await fetchUserById(id);
+    else user = await fetchUserByName(name);
+
+    if (!user) { msg.innerText = "找不到此玩家"; return; }
 
     localStorage.setItem("userId", user.id);
     localStorage.setItem("userName", user.name);
@@ -267,6 +270,7 @@ async function login() {
     msg.innerText = "登入失敗（請看 Console）";
   }
 }
+
 
 /* ================== 存分數 ================== */
 async function saveScore(seconds) {
@@ -369,6 +373,50 @@ function bindIdAutoFill() {
   });
 }
 
+async function fetchUserByName(name) {
+  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data && data.id ? data : null; // 期待 {id, name}
+}
+function bindNameAutoFill() {
+  const idEl = document.getElementById("idInput");
+  const nameEl = document.getElementById("nameInput");
+  const msgEl = document.getElementById("loginMsg");
+  let timer = null;
+
+  nameEl.addEventListener("input", () => {
+    clearTimeout(timer);
+
+    const name = nameEl.value.trim();
+    if (msgEl) msgEl.innerText = "";
+
+    // 名字清空時，同時清空編號
+    if (!name) {
+      idEl.value = "";
+      return;
+    }
+
+    timer = setTimeout(async () => {
+      try {
+        const user = await fetchUserByName(name);
+
+        if (user) {
+          idEl.value = user.id || "";
+          nameEl.value = user.name || name; // 以資料庫為準（避免大小寫/空格）
+          if (msgEl) msgEl.innerText = "";
+        } else {
+          idEl.value = "";
+          if (msgEl) msgEl.innerText = "找不到此姓名";
+        }
+      } catch (e) {
+        console.error(e);
+        if (msgEl) msgEl.innerText = "查詢失敗（請看 Console）";
+      }
+    }, 300);
+  });
+}
+    
 /* ================== BLE / 遊戲區（你原本的） ================== */
 const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
@@ -785,6 +833,7 @@ async function loadReport() {
 window.addEventListener("load", () => {
   bindIdAutoFill();
   loadNextId();
+  bindNameAutoFill(); 
   initReportSongList();
 
   const savedId = localStorage.getItem("userId");
