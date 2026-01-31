@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 鋼琴遊戲（遊戲版）</title>
+  <title> 鋼琴遊戲 </title>
 
   <style>
     body{
@@ -97,8 +97,8 @@
 
 <!-- ✅ 登入 -->
 <div id="loginBox">
-  <input id="idInput" placeholder="輸入編號" />
-  <input id="nameInput" placeholder="玩家姓名" />
+  <input id="idInput" placeholder="輸入床號" />
+  <input id="nameInput" placeholder="住民姓名" />
   <button onclick="login()">登入</button>
   <p id="loginMsg"></p>
 </div>
@@ -117,9 +117,9 @@
 <!-- ✅ 遊戲主系統 -->
 <div id="app" style="display:none;">
 
-  <h1 style="font-size:30px; margin: 10px 0;">🎵 ESP32 鋼琴挑戰（遊戲版）</h1>
+  <h1 style="font-size:30px; margin: 10px 0;">🎵 鋼琴挑戰 </h1>
   <h2 style="font-size:22px; margin: 10px 0;">
-    👤 玩家：<span id="userName">---</span>
+    👤 住民：<span id="userName">---</span>
     <button type="button" onclick="logout()">登出</button>
   </h2>
 
@@ -173,14 +173,14 @@
       <h3 style="margin: 0 0 10px 0;">2. 選擇關卡（遊戲開始）</h3>
 
       <select id="songSelect" style="padding: 12px; font-size: 20px; width: 88%; border-radius: 8px;">
-        <option value="3,2,1,2,3,3,3,2,2,2,3,5,5,3,2,1,2,3,3,3,3,2,2,3,2,1">瑪莉有隻小綿羊（完整版）</option>
-        <option value="1,1,5,5,4,4,5,3,3,2,2,1,5,5,3,3,2,5,5,3,3,2,1,1,5,5,4,4,5,3,3,2,2,1">小星星（完整版）</option>
+        <option value="3,2,1,2,3,3,3,2,2,2,3,5,5,3,2,1,2,3,3,3,3,2,2,3,2,1">瑪莉有隻小綿羊</option>
+        <option value="1,1,5,5,4,4,5,3,3,2,2,1,5,5,3,3,2,5,5,3,3,2,1,1,5,5,4,4,5,3,3,2,2,1">小星星</option>
         <option value="3,3,4,3,5,4,3,3,4,3,1,3,3,5,4,3,2,1,4,4,3,1,2,1">生日快樂（完整版）</option>
         <option value="1,2,3,1,1,2,3,1,3,4,5,3,4,5,5,3,5,5,3,5,1,5,1">兩隻老虎（完整版）</option>
-        <option value="5,3,3,4,2,2,1,2,3,4,5,5,5,2,2,2,2,2,3,4,3,3,3,3,4,5,5,3,3,4,2,2,1">小蜜蜂（完整版）</option>
-        <option value="3,3,4,5,5,4,3,2,1,1,2,3,3,2,2,3,3,4,5,5,4,3,2,1,1,2,3,2,1,1">歡樂頌（完整版）</option>
-        <option value="1,2,3,4,5,5,4,3,2,1,1,2,3,4,5,5,4,3,2,1">音階上下（完整版）</option>
-        <option value="1,3,5,3,1,3,5,3,2,4,5,4,2,4,5,4,1,3,5,3">分解和弦（完整版）</option>
+        <option value="5,3,3,4,2,2,1,2,3,4,5,5,5,2,2,2,2,2,3,4,3,3,3,3,4,5,5,3,3,4,2,2,1">小蜜蜂</option>
+        <option value="3,3,4,5,5,4,3,2,1,1,2,3,3,2,2,3,3,4,5,5,4,3,2,1,1,2,3,2,1,1">歡樂頌</option>
+        <option value="1,2,3,4,5,5,4,3,2,1,1,2,3,4,5,5,4,3,2,1">音階上下</option>
+        <option value="1,3,5,3,1,3,5,3,2,4,5,4,2,4,5,4,1,3,5,3">分解和弦</option>
       </select>
 
       <br><br>
