@@ -68,7 +68,7 @@
       <button onclick="logout()">登出</button>
     </h2>
     <p class="small" style="margin:10px 0 0 0;">
-      ✅ 固定規則（實體順序=數字）：1=紅Re、2=藍Do、3=黃Mi、4=白So、5=綠Fa
+      
     </p>
   </div>
 
@@ -94,7 +94,7 @@
           <button onclick="testLed(3)">3 黃 Mi</button>
           <button onclick="testLed(4)">4 白 So</button>
           <button onclick="testLed(5)">5 綠 Fa</button>
-          <button onclick="testLed(0)">關燈</button>
+
         </div>
         <p class="hint">最後按下：<span id="lastPressed" style="color:yellow;font-weight:bold;">-</span></p>
       </div>
@@ -365,10 +365,12 @@ function readyCheck(){
   if(ledChar && btnOk) startBtn.style.display="inline-block";
 }
 
-function testLed(n){
+function testLed(sem){
   if(!ledChar){ alert("LED尚未連線"); return; }
-  ledChar.writeValue(new TextEncoder().encode(String(n)));
+  const hw = toHw(sem);
+  ledChar.writeValue(new TextEncoder().encode(String(hw)));
 }
+
 
 /* ================== 遊戲 ================== */
 function parseSong(){
@@ -415,27 +417,28 @@ async function startGame(){
 function playNote(){
   if(!isPlaying) return;
 
-  if(index>=song.length){
+  if(index >= song.length){
     finishGame();
     return;
   }
 
-  const note = song[index]; // ✅ 直接就是實體順序 1~5
-  currentNote.innerText = note;
-  logMsg.innerText = `目標：${note}`;
+  const sem = song[index];      // 歌曲裡的值：1~5（你的語意：紅藍黃白綠）
+  const hw  = toHw(sem);        // 轉成硬體碼
 
-  // 先亮燈
-  try{
-    ledChar.writeValue(new TextEncoder().encode(String(note)));
-  }catch(e){}
+  currentNote.innerText = sem;  // 畫面顯示語意值（不會亂）
+  logMsg.innerText = `目標：${sem}`;
 
-  // 再送聲音目標（延遲一點點，避免剛開始/剛切換被吃）
-  setTimeout(()=>{
-    try{
-      targetChar.writeValue(new TextEncoder().encode(String(note)));
-    }catch(e){}
-  }, 60);
+  // 亮燈：送硬體碼
+  if(ledChar) ledChar.writeValue(new TextEncoder().encode(String(hw)));
+
+  // 聲音目標：也送硬體碼（延遲避免第一顆被吃）
+  if(targetChar){
+    setTimeout(()=>{
+      targetChar.writeValue(new TextEncoder().encode(String(hw)));
+    }, 60);
+  }
 }
+
 
 function onBtnPress(e){
   if(!isPlaying) return;
@@ -443,8 +446,10 @@ function onBtnPress(e){
   const pressed = parseInt(new TextDecoder().decode(e.target.value), 10);
   lastPressed.innerText = isNaN(pressed) ? "-" : pressed;
 
-  const target = song[index]; // ✅ 直接比對實體數字
-  if(pressed === target){
+  const sem = song[index];
+  const hw  = toHw(sem);
+
+  if(pressed === hw){
     index++;
     setTimeout(playNote, 60);
   }else{
