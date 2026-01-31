@@ -139,17 +139,14 @@
         style="padding:10px; font-size:16px; min-width:260px;"
         onchange="loadReport()">
       <label>開始</label>
-<input id="fromDT" type="datetime-local" step="3600"
+<input id="fromDT" type="date" 
        style="padding:8px; font-size:14px;">
 
 <label>結束</label>
-<input id="toDT" type="datetime-local" step="3600"
-       style="padding:8px; font-size:14px;">
+<input id="toDT" type="date"  style="padding:8px; font-size:14px;">
   <label style="margin-left:10px;">模式</label>
 <select id="reportMode" style="padding:10px; font-size:16px;" onchange="loadReport()">
-  <option value="daily_best">每天最佳(最短)</option>
-  <option value="each_try" selected>每次紀錄(到小時)</option>
-  <option value="hour_best">每小時最佳</option>
+ 
 </select>
 
 </select>
@@ -690,49 +687,33 @@ async function loadReport() {
   }
 
   // ✅ 將資料標準化（你 DB 欄位就是 seconds / created_at）
-  const parsed = rows
-    .map(r => ({
-      seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
-      created_at: String(r.created_at ?? r.play_date ?? r.date ?? "")
-    }))
-    .filter(x => !isNaN(x.seconds) && x.created_at);
+const { labels, data } = groupByHour(rows);
 
-  // ✅ 依模式產生 labels/data
-  let labels = [];
-  let data = [];
-  let xTitle = "日期";
+if (progressChart) progressChart.destroy();
 
-  if (mode === "daily_best") {
-    // 每天最佳（最短）
-    const bestByDate = new Map(); // YYYY-MM-DD -> bestSeconds
-    for (const it of parsed) {
-      const d = it.created_at.slice(0, 10); // 2026-01-30
-      const prev = bestByDate.get(d);
-      if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
+progressChart = new Chart(canvas, {
+  type: "line",
+  data: {
+    labels,
+    datasets: [{
+      label: "每小時紀錄（顯示到時）",
+      data,
+      borderWidth: 2,
+      tension: 0.3
+    }]
+  },
+  options: {
+    scales: {
+      x: {
+        title: { display: true, text: "日期（小時）" }
+      },
+      y: {
+        title: { display: true, text: "秒數" }
+      }
     }
-    labels = Array.from(bestByDate.keys()).sort();
-    data = labels.map(d => bestByDate.get(d));
-    xTitle = "日期";
-
-  } else if (mode === "each_try") {
-    // 每次紀錄（到「小時」）
-    parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    labels = parsed.map(it => it.created_at.slice(0, 13)); // "2026-01-30 15"
-    data = parsed.map(it => it.seconds);
-    xTitle = "日期(到小時)";
-
-  } else if (mode === "hour_best") {
-    // 每小時最佳（最短）
-    const bestByHour = new Map(); // "YYYY-MM-DD HH" -> bestSeconds
-    for (const it of parsed) {
-      const h = it.created_at.slice(0, 13); // 2026-01-30 15
-      const prev = bestByHour.get(h);
-      if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
-    }
-    labels = Array.from(bestByHour.keys()).sort();
-    data = labels.map(h => bestByHour.get(h));
-    xTitle = "日期(到小時)";
   }
+});
+
 
   const canvas = document.getElementById("reportChart");
   if (!canvas) return;
