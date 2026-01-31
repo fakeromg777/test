@@ -67,9 +67,6 @@
       👤 住民：<span id="userName">---</span>
       <button onclick="logout()">登出</button>
     </h2>
-    <p class="small" style="margin:10px 0 0 0;">
-      
-    </p>
   </div>
 
   <div id="mainPage">
@@ -87,14 +84,14 @@
       </div>
 
       <div id="hardwareTest" class="test-panel">
-        <h4 style="margin:0 0 10px 0;">🔧 測試燈號（實體順序）</h4>
+        <h4 style="margin:0 0 10px 0;">🔧 測試燈號（語意：1紅2藍3黃4白5綠）</h4>
         <div class="row">
           <button onclick="testLed(1)">1 紅 Re</button>
           <button onclick="testLed(2)">2 藍 Do</button>
           <button onclick="testLed(3)">3 黃 Mi</button>
           <button onclick="testLed(4)">4 白 So</button>
           <button onclick="testLed(5)">5 綠 Fa</button>
-
+          <button onclick="turnOff()">關燈</button>
         </div>
         <p class="hint">最後按下：<span id="lastPressed" style="color:yellow;font-weight:bold;">-</span></p>
       </div>
@@ -103,9 +100,8 @@
     <div class="box">
       <h3 style="margin:0 0 10px 0;">2. 選擇歌曲</h3>
 
-      <!-- 重要：這裡的 value 已經是「實體順序數字」(1~5) -->
+      <!-- ✅ 這裡 value 用「語意值」：1紅2藍3黃4白5綠（不要用硬體碼） -->
       <select id="songSelect">
-        <!-- 你原本已經修過的幾首（保留） -->
         <option value="3,1,2,1,3,3,3,1,1,1,3,4,4,3,1,2,1,3,3,3,3,1,1,3,1,2">瑪莉有隻小綿羊</option>
         <option value="2,2,4,4,5,5,4,3,3,1,1,2,4,4,3,3,1,4,4,3,3,1,2,2,4,4,5,5,4,3,3,1,1,2">小星星</option>
         <option value="3,3,5,3,4,5,3,3,5,3,2,3,3,4,5,3,1,2,5,5,3,2,1,2">生日快樂</option>
@@ -115,17 +111,15 @@
         <option value="2,1,3,5,4,4,5,3,1,2,2,1,3,5,4,4,5,3,1,2">音階上下</option>
         <option value="2,3,4,3,2,3,4,3,1,5,4,5,1,5,4,5,2,3,4,3">分解和弦</option>
 
-        <!-- 你新增的 -->
         <option value="2,2,3,3,4,3,2,1,2,3,4,4,3">划龍舟</option>
         <option value="2,3,2,3,4,3,2,1,2,3,4,3,2,2,3,2,3,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2">拔蘿蔔</option>
         <option value="2,2,3,4,4,3,2,1,2,3,4,3,2,2,2,3,4,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2,1">小兔子</option>
         <option value="2,3,4,4,5,4,3,2,2,3,4,3,2,2,3,4,4,5,4,3,2,2,3,4,3,2,3,4,5,4,3,2">划呀划小船</option>
 
-        <!-- 再補 1 首較長（只用 1~5） -->
-        <option value="2,3,4,5,4,3,2,1,2,2,3,3,4,4,5,4,3,2,1,2,3,2,1,1,2,3,4,5,5,4,3,2,2,1">小步舞曲(簡化版)</option>
+        <option value="2,3,4,5,4,3,2,1,2,2,3,3,4,4,5,4,3,2,1,2,3,2,1,1,2,3,4,5,5,4,3,2,2,1">小步舞曲</option>
       </select>
 
-      <div class="hint">所有歌曲只允許 1~5（依你的實體顏色/音名定義）</div>
+      <div class="hint">✅ 你硬體實際是 1藍2紅3黃4綠5白，所以程式會自動轉換</div>
 
       <br>
       <button id="startBtn" class="btn-start" onclick="startGame()">開始遊戲</button>
@@ -142,6 +136,15 @@
 </div>
 
 <script>
+/* ================== ✅ 核心：語意值 -> 硬體碼 ==================
+硬體目前：1藍 2紅 3黃 4綠 5白
+你語意： 1紅 2藍 3黃 4白 5綠
+所以：語意 -> 硬體
+1->2, 2->1, 3->3, 4->5, 5->4
+================================================== */
+const SEM_TO_HW = { 1:2, 2:1, 3:3, 4:5, 5:4 };
+function toHw(n){ return SEM_TO_HW[n] ?? n; }
+
 /* ================== 你的 API 路徑（保留） ================== */
 async function fetchUserById(id){
   const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache:"no-store" });
@@ -215,50 +218,47 @@ async function saveScore(seconds){
 }
 
 /* ================== 登入/登出/自動帶入 ================== */
-function showLogin(){
-  loginBox.style.display = "block";
-  app.style.display = "none";
-}
+function showLogin(){ loginBox.style.display="block"; app.style.display="none"; }
 function showApp(){
-  loginBox.style.display = "none";
-  app.style.display = "block";
-  mainPage.style.display = "block";
-  gameArea.style.display = "none";
+  loginBox.style.display="none";
+  app.style.display="block";
+  mainPage.style.display="block";
+  gameArea.style.display="none";
 }
 function logout(){
   try{ stopGame(); }catch(e){}
   localStorage.removeItem("userId");
   localStorage.removeItem("userName");
-  idInput.value = "";
-  nameInput.value = "";
-  userName.innerText = "---";
+  idInput.value="";
+  nameInput.value="";
+  userName.innerText="---";
   showLogin();
 }
 async function login(){
   const id = idInput.value.trim();
   const name = nameInput.value.trim();
-  if(!id && !name){ loginMsg.innerText = "請輸入床號或姓名"; return; }
-  loginMsg.innerText = "查詢中...";
+  if(!id && !name){ loginMsg.innerText="請輸入床號或姓名"; return; }
+  loginMsg.innerText="查詢中...";
 
   try{
-    let user = null;
-    if(id) user = await fetchUserById(id);
-    else user = await fetchUserByName(name);
+    let user=null;
+    if(id) user=await fetchUserById(id);
+    else user=await fetchUserByName(name);
 
-    if(!user){ loginMsg.innerText = "找不到此住民"; return; }
+    if(!user){ loginMsg.innerText="找不到此住民"; return; }
 
     localStorage.setItem("userId", user.id);
     localStorage.setItem("userName", user.name);
 
-    idInput.value = user.id;
-    nameInput.value = user.name;
-    userName.innerText = `${user.id}｜${user.name}`;
+    idInput.value=user.id;
+    nameInput.value=user.name;
+    userName.innerText=`${user.id}｜${user.name}`;
 
-    loginMsg.innerText = "";
+    loginMsg.innerText="";
     showApp();
   }catch(e){
     console.error(e);
-    loginMsg.innerText = "登入失敗（請看 Console）";
+    loginMsg.innerText="登入失敗（請看 Console）";
   }
 }
 function bindIdAutoFill(){
@@ -266,13 +266,13 @@ function bindIdAutoFill(){
   idInput.addEventListener("input", ()=>{
     clearTimeout(timer);
     timer=setTimeout(async ()=>{
-      const id = idInput.value.trim();
-      nameInput.value = "";
-      loginMsg.innerText = "";
+      const id=idInput.value.trim();
+      nameInput.value="";
+      loginMsg.innerText="";
       if(!id) return;
-      const user = await fetchUserById(id);
-      if(user) nameInput.value = user.name || "";
-      else loginMsg.innerText = "找不到此床號";
+      const user=await fetchUserById(id);
+      if(user) nameInput.value=user.name||"";
+      else loginMsg.innerText="找不到此床號";
     }, 250);
   });
 }
@@ -280,29 +280,29 @@ function bindNameAutoFill(){
   let timer=null;
   nameInput.addEventListener("input", ()=>{
     clearTimeout(timer);
-    const name = nameInput.value.trim();
-    loginMsg.innerText = "";
+    const name=nameInput.value.trim();
+    loginMsg.innerText="";
     if(!name){ idInput.value=""; return; }
 
     timer=setTimeout(async ()=>{
       try{
-        const user = await fetchUserByName(name);
+        const user=await fetchUserByName(name);
         if(user){
-          idInput.value = user.id || "";
-          nameInput.value = user.name || name;
+          idInput.value=user.id||"";
+          nameInput.value=user.name||name;
         }else{
-          idInput.value = "";
-          loginMsg.innerText = "找不到此姓名";
+          idInput.value="";
+          loginMsg.innerText="找不到此姓名";
         }
       }catch(e){
         console.error(e);
-        loginMsg.innerText = "查詢失敗（請看 Console）";
+        loginMsg.innerText="查詢失敗（請看 Console）";
       }
     }, 250);
   });
 }
 
-/* ================== BLE（實體順序統一，不再轉換） ================== */
+/* ================== BLE ================== */
 const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
@@ -313,10 +313,7 @@ const BTN_TARGET_UUID  = "3456483e-36e1-4688-b7f5-ea07361b26a8";
 let ledChar=null, targetChar=null;
 let isPlaying=false, song=[], index=0, timerInt=null, startTime=0;
 
-function log(msg){
-  debugText.innerText = msg;
-  console.log(msg);
-}
+function log(msg){ debugText.innerText=msg; console.log(msg); }
 
 async function connectLed(){
   try{
@@ -324,9 +321,9 @@ async function connectLed(){
       filters:[{name:"ESP32_LED_Control"}],
       optionalServices:[LED_UUID]
     });
-    const srv = await dev.gatt.connect();
-    const svc = await srv.getPrimaryService(LED_UUID);
-    ledChar = await svc.getCharacteristic(LED_CHAR);
+    const srv=await dev.gatt.connect();
+    const svc=await srv.getPrimaryService(LED_UUID);
+    ledChar=await svc.getCharacteristic(LED_CHAR);
 
     ledStatus.innerText="已連線 ✅";
     ledStatus.className="status-ok";
@@ -342,11 +339,11 @@ async function connectBtn(){
       filters:[{name:"ESP32_Button_Input"}],
       optionalServices:[BTN_SERVICE_UUID]
     });
-    const srv = await dev.gatt.connect();
-    const svc = await srv.getPrimaryService(BTN_SERVICE_UUID);
+    const srv=await dev.gatt.connect();
+    const svc=await srv.getPrimaryService(BTN_SERVICE_UUID);
 
-    const notify = await svc.getCharacteristic(BTN_NOTIFY_UUID);
-    targetChar = await svc.getCharacteristic(BTN_TARGET_UUID);
+    const notify=await svc.getCharacteristic(BTN_NOTIFY_UUID);
+    targetChar=await svc.getCharacteristic(BTN_TARGET_UUID);
 
     await notify.startNotifications();
     notify.addEventListener("characteristicvaluechanged", onBtnPress);
@@ -360,9 +357,14 @@ async function connectBtn(){
 }
 
 function readyCheck(){
-  hardwareTest.style.display = "block";
+  hardwareTest.style.display="block";
   const btnOk = btnStatus.className.includes("status-ok");
   if(ledChar && btnOk) startBtn.style.display="inline-block";
+}
+
+function turnOff(){
+  try{ if(ledChar) ledChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
+  try{ if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
 }
 
 function testLed(sem){
@@ -370,7 +372,6 @@ function testLed(sem){
   const hw = toHw(sem);
   ledChar.writeValue(new TextEncoder().encode(String(hw)));
 }
-
 
 /* ================== 遊戲 ================== */
 function parseSong(){
@@ -392,14 +393,11 @@ async function startGame(){
     return;
   }
 
-  // 進入遊戲畫面
   mainPage.style.display="none";
   gameArea.style.display="block";
 
-  // 開局：先清掉 target（避免第一顆被吃掉）
-  try{
-    await targetChar.writeValue(new TextEncoder().encode("0"));
-  }catch(e){}
+  // 開局先清 target（避免第一顆被吃）
+  try{ await targetChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
 
   index=0;
   isPlaying=true;
@@ -410,7 +408,6 @@ async function startGame(){
     timeDisplay.innerText=((Date.now()-startTime)/1000).toFixed(2);
   },30);
 
-  // 稍微等一下再出第一顆（更穩）
   setTimeout(playNote, 120);
 }
 
@@ -422,23 +419,20 @@ function playNote(){
     return;
   }
 
-  const sem = song[index];      // 歌曲裡的值：1~5（你的語意：紅藍黃白綠）
-  const hw  = toHw(sem);        // 轉成硬體碼
+  const sem = song[index];   // 語意值(1~5)
+  const hw  = toHw(sem);     // 轉硬體碼(1~5)
 
-  currentNote.innerText = sem;  // 畫面顯示語意值（不會亂）
+  currentNote.innerText = sem;
   logMsg.innerText = `目標：${sem}`;
 
-  // 亮燈：送硬體碼
   if(ledChar) ledChar.writeValue(new TextEncoder().encode(String(hw)));
 
-  // 聲音目標：也送硬體碼（延遲避免第一顆被吃）
   if(targetChar){
     setTimeout(()=>{
       targetChar.writeValue(new TextEncoder().encode(String(hw)));
     }, 60);
   }
 }
-
 
 function onBtnPress(e){
   if(!isPlaying) return;
@@ -461,9 +455,7 @@ async function finishGame(){
   if(timerInt){ clearInterval(timerInt); timerInt=null; }
   isPlaying=false;
 
-  // 關燈、關聲音
-  try{ ledChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
-  try{ targetChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
+  turnOff();
 
   const seconds = parseFloat(timeDisplay.innerText) || 0;
   await saveScore(seconds);
@@ -476,9 +468,7 @@ function stopGame(){
   if(timerInt){ clearInterval(timerInt); timerInt=null; }
   isPlaying=false;
 
-  // 關燈、關聲音
-  try{ if(ledChar) ledChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
-  try{ if(targetChar) targetChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
+  turnOff();
 
   gameArea.style.display="none";
   mainPage.style.display="block";
