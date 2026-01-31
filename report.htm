@@ -7,6 +7,7 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <style>
     body { font-family: 'Microsoft JhengHei', sans-serif; text-align:center; background:#222; color:white; padding-top:20px; }
@@ -181,28 +182,45 @@ async function loadReport() {
     return;
   }
 
-  progressChart = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "每次秒數（到小時，越低越好）",
-        data,
-        borderWidth: 2,
-        tension: 0.3
-      }]
+ progressChart = new Chart(canvas, {
+  type: "line",
+  data: {
+    labels,
+    datasets: [{
+      label: "每次秒數（到小時，越低越好）",
+      data,
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  },
+  plugins: [ChartDataLabels],   // ✅ 關鍵
+  options: {
+    responsive: true,
+    scales: {
+      y: { title: { display: true, text: "秒數" } },
+      x: {
+        title: { display: true, text: "日期(到小時)" },
+        ticks: { autoSkip: true, maxRotation: 0 }
+      }
     },
-    options: {
-      responsive: true,
-      scales: {
-        y: { title: { display: true, text: "秒數" } },
-        x: {
-          title: { display: true, text: "日期(到小時)" },
-          ticks: { autoSkip: true, maxRotation: 0 }
+    plugins: {
+      legend: { display: true },
+      datalabels: {
+        anchor: "end",
+        align: "top",
+        offset: 4,
+        formatter: v => Number(v).toFixed(2), // 12.34
+        font: {
+          size: 12,
+          weight: "bold"
         }
       }
     }
-  });
+  }
+});
+
 }
 
 /* ===== 初始化 ===== */
