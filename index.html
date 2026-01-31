@@ -133,25 +133,18 @@
   <div id="reportPage" class="box box-wide" style="display:none;">
     <h3>📈 學習成效追蹤</h3>
 
-    <div style="display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap;">
-      <label>歌曲</label>
-      <select id="reportSongSelect"
-        style="padding:10px; font-size:16px; min-width:260px;"
-        onchange="loadReport()">
-      <label>開始</label>
-<input id="fromDT" type="date" step="3600"
-       style="padding:8px; font-size:14px;">
+<div style="display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap;">
+  <label>歌曲</label>
+  <select id="reportSongSelect" style="padding:10px; font-size:16px; min-width:260px;"></select>
 
-<label>結束</label>
-<input id="toDT" type="date" step="3600"
-       style="padding:8px; font-size:14px;">
-  
+  <label>開始</label>
+  <input id="fromDT" type="date" style="padding:8px; font-size:14px;">
 
-</select>
+  <label>結束</label>
+  <input id="toDT" type="date" style="padding:8px; font-size:14px;">
 
-   
-      <button onclick="backToMain()" style="padding:10px 18px; background:#555; color:#fff;">返回遊戲</button>
-    </div>
+  <button onclick="backToMain()" style="padding:10px 18px; background:#555; color:#fff;">返回遊戲</button>
+</div>
 
     <div style="margin-top:18px; background:#222; padding:12px; border-radius:10px;">
       <canvas id="reportChart" height="120"></canvas>
@@ -699,6 +692,32 @@ function turnOffLed() {
     }
   }
 }
+function groupByHour(rows) {
+  const map = new Map(); // "YYYY-MM-DD HH" -> seconds
+
+  for (const r of rows) {
+    const dt = r.created_at;
+    const sec = Number(r.seconds);
+    if (!dt || isNaN(sec)) continue;
+
+    // MySQL datetime: "2026-01-30 18:58:32"
+    const d = new Date(dt.replace(" ", "T"));
+    if (isNaN(d.getTime())) continue;
+
+    const key =
+      d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0") + " " +
+      String(d.getHours()).padStart(2, "0");
+
+    // 同一小時多筆：你要「最後一筆」就覆蓋；要「最佳」就改成 Math.min
+    map.set(key, sec);
+  }
+
+  const labels = Array.from(map.keys()).sort();
+  const data = labels.map(k => map.get(k));
+  return { labels, data };
+}
     
 async function loadReport() {
   const msgEl = document.getElementById("reportMsg");
@@ -714,7 +733,7 @@ async function loadReport() {
   const fromD = document.getElementById("fromDT")?.value || "";
   const toD   = document.getElementById("toDT")?.value || "";
 
-  // ✅ date → 範圍補成整天
+  // ✅ 只選年月日 → 後端查整天
   const from = fromD ? `${fromD} 00:00:00` : "";
   const to   = toD   ? `${toD} 23:59:59`   : "";
 
@@ -734,6 +753,11 @@ async function loadReport() {
     if (msgEl) msgEl.textContent = "❌ 讀取成績失敗（請看 Console / Network）";
     return;
   }
+
+  // ✅ 只保留 seconds / created_at（你DB就是這兩個）
+  rows = rows
+    .map(r => ({ seconds: Number(r.seconds), created_at: r.created_at }))
+    .filter(r => !isNaN(r.seconds) && r.created_at);
 
   const canvas = document.getElementById("reportChart");
   if (!canvas) return;
@@ -773,6 +797,7 @@ async function loadReport() {
 }
 
 
+
   // ✅ 將資料標準化（你 DB 欄位就是 seconds / created_at）
   const parsed = rows
     .map(r => ({
@@ -781,115 +806,7 @@ async function loadReport() {
     }))
     .filter(x => !isNaN(x.seconds) && x.created_at);
 
-function groupByHour(rows) {
-  const map = new Map(); // "YYYY-MM-DD HH" -> seconds
 
-  for (const r of rows) {
-    const dt = r.created_at;
-    const sec = Number(r.seconds);
-    if (!dt || isNaN(sec)) continue;
-
-    // "2026-01-30 18:58:32" → 轉 Date
-    const d = new Date(dt.replace(" ", "T"));
-
-    const key =
-      d.getFullYear() + "-" +
-      String(d.getMonth() + 1).padStart(2, "0") + "-" +
-      String(d.getDate()).padStart(2, "0") + " " +
-      String(d.getHours()).padStart(2, "0");
-
-    // 同小時多筆 → 取最後一筆（覆蓋）
-    map.set(key, sec);
-  }
-
-  const labels = Array.from(map.keys()).sort();
-  const data = labels.map(k => map.get(k));
-  return { labels, data };
-}
-
-    
-  // ✅ 依模式產生 labels/data
-  let labels = [];
-  let data = [];
-  let xTitle = "日期";
-
-  if (mode === "daily_best") {
-    // 每天最佳（最短）
-    const bestByDate = new Map(); // YYYY-MM-DD -> bestSeconds
-    for (const it of parsed) {
-      const d = it.created_at.slice(0, 10); // 2026-01-30
-      const prev = bestByDate.get(d);
-      if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
-    }
-    labels = Array.from(bestByDate.keys()).sort();
-    data = labels.map(d => bestByDate.get(d));
-    xTitle = "日期";
-
-  } else if (mode === "each_try") {
-    // 每次紀錄（到「小時」）
-    parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    labels = parsed.map(it => it.created_at.slice(0, 13)); // "2026-01-30 15"
-    data = parsed.map(it => it.seconds);
-    xTitle = "日期(到小時)";
-
-  } else if (mode === "hour_best") {
-    // 每小時最佳（最短）
-    const bestByHour = new Map(); // "YYYY-MM-DD HH" -> bestSeconds
-    for (const it of parsed) {
-      const h = it.created_at.slice(0, 13); // 2026-01-30 15
-      const prev = bestByHour.get(h);
-      if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
-    }
-    labels = Array.from(bestByHour.keys()).sort();
-    data = labels.map(h => bestByHour.get(h));
-    xTitle = "日期(到小時)";
-  }
-
-  const canvas = document.getElementById("reportChart");
-  if (!canvas) return;
-
-  if (progressChart) {
-    progressChart.destroy();
-    progressChart = null;
-  }
-
-  if (labels.length === 0) {
-    if (msgEl) msgEl.textContent = "目前沒有資料（請調整時間範圍或先玩一局再看）";
-    // 沒資料就畫空圖（避免留著舊圖誤會）
-    progressChart = new Chart(canvas, {
-      type: "line",
-      data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
-      options: { responsive: true }
-    });
-    return;
-  }
-
-  progressChart = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label:
-          mode === "daily_best" ? "每天最佳秒數（越低越好）" :
-          mode === "hour_best"  ? "每小時最佳秒數（越低越好）" :
-                                  "每次秒數（越低越好）",
-        data,
-        borderWidth: 2,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { title: { display: true, text: "秒數" } },
-        x: {
-          title: { display: true, text: xTitle },
-          ticks: { autoSkip: true, maxRotation: 0 }
-        }
-      }
-    }
-  });
-}
 
 
 /* ================== 頁面載入 ================== */
