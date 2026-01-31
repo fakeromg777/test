@@ -134,17 +134,23 @@
     <h3>📈 學習成效追蹤</h3>
 
     <div style="display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap;">
-    <label>歌曲</label>
-<select id="reportSongSelect" style="padding:10px; font-size:16px; min-width:260px;"></select>
-
-<label>開始</label>
-<input id="fromDT" type="date" style="padding:8px; font-size:14px;">
+      <label>歌曲</label>
+      <select id="reportSongSelect"
+        style="padding:10px; font-size:16px; min-width:260px;"
+        onchange="loadReport()">
+      <label>開始</label>
+<input id="fromDT" type="datetime-local" step="3600"
+       style="padding:8px; font-size:14px;">
 
 <label>結束</label>
-<input id="toDT" type="date" style="padding:8px; font-size:14px;">
-
-<button onclick="backToMain()" style="padding:10px 18px; background:#555; color:#fff;">返回遊戲</button>
-
+<input id="toDT" type="datetime-local" step="3600"
+       style="padding:8px; font-size:14px;">
+  <label style="margin-left:10px;">模式</label>
+<select id="reportMode" style="padding:10px; font-size:16px;" onchange="loadReport()">
+  <option value="daily_best">每天最佳(最短)</option>
+  <option value="each_try" selected>每次紀錄(到小時)</option>
+  <option value="hour_best">每小時最佳</option>
+</select>
 
 </select>
 
@@ -157,7 +163,7 @@
     </div>
 
     <p style="margin-top:10px; color:#aaa; font-size:14px;">
-       顯示「每小時紀錄（顯示到時）」：左邊=秒數、下方=日期小時
+      顯示「每天最佳秒數（最短）」趨勢：左邊=秒數、下方=日期（越低越好）
     </p>
 
     <p id="reportMsg" style="color:#ffcc66;"></p>
@@ -453,29 +459,6 @@ function checkReady() {
     document.getElementById("startBtn").style.display = "inline-block";
   }
 }
-function groupByHour(rows) {
-  const map = new Map(); // "YYYY-MM-DD HH" -> seconds(取最後一筆)
-
-  for (const r of rows) {
-    const dt = r.created_at || r.created || r.time;
-    const sec = Number(r.seconds);
-    if (!dt || isNaN(sec)) continue;
-
-    const d = new Date(dt.replace(" ", "T")); // "2026-01-30 15:47:35" 容錯
-    const key =
-      d.getFullYear() + "-" +
-      String(d.getMonth() + 1).padStart(2, "0") + "-" +
-      String(d.getDate()).padStart(2, "0") + " " +
-      String(d.getHours()).padStart(2, "0");
-
-    // ✅ 同一小時多筆：取「最後一筆」
-    map.set(key, sec);
-  }
-
-  const labels = Array.from(map.keys()).sort();
-  const data = labels.map(k => map.get(k));
-  return { labels, data };
-}
 
 function testLed(num) {
   if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(num)));
@@ -687,12 +670,12 @@ async function loadReport() {
   const songName = document.getElementById("reportSongSelect")?.value ?? "";
   const fromDT = document.getElementById("fromDT")?.value || "";
   const toDT   = document.getElementById("toDT")?.value || "";
+  const mode   = document.getElementById("reportMode")?.value || "daily_best";
 
-  const url =
-    `/test/api/get_scores.php?player_id=${encodeURIComponent(playerId)}` +
-    `&song_name=${encodeURIComponent(songName)}` +
-    `&from=${encodeURIComponent(fromDT)}` +
-    `&to=${encodeURIComponent(toDT)}`;
+  const url = `/test/api/get_scores.php?player_id=${encodeURIComponent(playerId)}`
+    + `&song_name=${encodeURIComponent(songName)}`
+    + `&from=${encodeURIComponent(fromDT)}`
+    + `&to=${encodeURIComponent(toDT)}`;
 
   let rows = [];
   try {
@@ -706,48 +689,50 @@ async function loadReport() {
     return;
   }
 
-  const canvas = document.getElementById("reportChart");
-  if (!canvas) return;
+  // ✅ 將資料標準化（你 DB 欄位就是 seconds / created_at）
+  const parsed = rows
+    .map(r => ({
+      seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
+      created_at: String(r.created_at ?? r.play_date ?? r.date ?? "")
+    }))
+    .filter(x => !isNaN(x.seconds) && x.created_at);
 
-  const { labels, data } = groupByHour(rows);
+  // ✅ 依模式產生 labels/data
+  let labels = [];
+  let data = [];
+  let xTitle = "日期";
 
-  if (progressChart) {
-    progressChart.destroy();
-    progressChart = null;
-  }
-
-  if (labels.length === 0) {
-    if (msgEl) msgEl.textContent = "目前沒有資料（請調整日期範圍或先玩一局再看）";
-    progressChart = new Chart(canvas, {
-      type: "line",
-      data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
-      options: { responsive: true }
-    });
-    return;
-  }
-
-  progressChart = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "每小時紀錄（顯示到時）",
-        data,
-        borderWidth: 2,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { title: { display: true, text: "秒數" } },
-        x: { title: { display: true, text: "日期（小時）" } }
-      }
+  if (mode === "daily_best") {
+    // 每天最佳（最短）
+    const bestByDate = new Map(); // YYYY-MM-DD -> bestSeconds
+    for (const it of parsed) {
+      const d = it.created_at.slice(0, 10); // 2026-01-30
+      const prev = bestByDate.get(d);
+      if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
     }
-  });
-}
+    labels = Array.from(bestByDate.keys()).sort();
+    data = labels.map(d => bestByDate.get(d));
+    xTitle = "日期";
 
+  } else if (mode === "each_try") {
+    // 每次紀錄（到「小時」）
+    parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    labels = parsed.map(it => it.created_at.slice(0, 13)); // "2026-01-30 15"
+    data = parsed.map(it => it.seconds);
+    xTitle = "日期(到小時)";
 
+  } else if (mode === "hour_best") {
+    // 每小時最佳（最短）
+    const bestByHour = new Map(); // "YYYY-MM-DD HH" -> bestSeconds
+    for (const it of parsed) {
+      const h = it.created_at.slice(0, 13); // 2026-01-30 15
+      const prev = bestByHour.get(h);
+      if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
+    }
+    labels = Array.from(bestByHour.keys()).sort();
+    data = labels.map(h => bestByHour.get(h));
+    xTitle = "日期(到小時)";
+  }
 
   const canvas = document.getElementById("reportChart");
   if (!canvas) return;
@@ -804,9 +789,9 @@ window.addEventListener("load", () => {
 
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
-  document.getElementById("reportSongSelect").addEventListener("change", loadReport);
   document.getElementById("fromDT").addEventListener("change", loadReport);
   document.getElementById("toDT").addEventListener("change", loadReport);
+
   if (savedId && savedName) {
     document.getElementById("userName").innerText = `${savedId}｜${savedName}`;
     showApp();
