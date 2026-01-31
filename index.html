@@ -1,48 +1,105 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 鋼琴遊戲 (含測試功能)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 鋼琴遊戲（遊戲版）</title>
 
-    <!-- ✅ Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body{
+      font-family: "Microsoft JhengHei", sans-serif;
+      text-align: center;
+      background: #222;
+      color: white;
+      padding-top: 20px;
 
-    <style>
-        body { font-family: 'Microsoft JhengHei', sans-serif; text-align: center; background: #222; color: white; padding-top: 20px;}
-        .box { border: 1px solid #555; padding: 20px; margin: 15px auto; max-width: 500px; border-radius: 10px; background: #333; }
-        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; margin: 5px;}
-        .btn-connect { background: #007bff; color: white; }
-        .btn-start { background: #28a745; color: white; font-size: 24px; padding: 15px 40px; display: none;}
-        .status-ok { color: #4cff00; font-weight: bold; }
+      /* ✅ 登入/新增整體字體放大 */
+      font-size: 20px;
+    }
 
-        .test-panel { background: #444; padding: 10px; border-radius: 5px; margin-top: 10px; display:none; border: 1px dashed #777;}
-        .test-btn { background: #666; color: white; font-size: 14px; padding: 8px 15px; }
-        .test-btn:active { background: #888; }
+    .box {
+      border: 1px solid #555;
+      padding: 20px;
+      margin: 15px auto;
+      max-width: 520px;
+      border-radius: 10px;
+      background: #333;
+    }
 
-        #gameArea { display: none; margin-top: 30px; }
-        .timer { font-size: 40px; color: #00d2ff; font-family: monospace; }
-        .note-display { font-size: 80px; color: yellow; font-weight: bold; margin: 20px 0; }
-        .instruction { color: #ff9999; font-size: 18px; margin-bottom: 10px;}
-        input[type=range] { width: 80%; cursor: pointer; }
-        .debug-area { margin-top: 50px; border-top: 1px solid #555; padding-top: 20px; color: gray; font-size: 0.9em; }
+    /* ✅ input、button 一起放大 */
+    input, button{
+      font-size: 20px;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border: none;
+      margin: 6px;
+    }
+    input{
+      width: 200px;
+      border: 1px solid #666;
+    }
+    button{
+      cursor: pointer;
+      background: #555;
+      color: #fff;
+    }
+    button:hover{ filter: brightness(1.05); }
 
-        /* 報表頁寬一點 */
-        .box-wide { max-width: 900px; }
-        body{
-  font-size: 20px;     /* ⭐ 整頁放大 */
-}
+    .btn-connect { background: #007bff; color: white; }
+    .btn-start { background: #28a745; color: white; font-size: 26px; padding: 16px 44px; display: none; }
+    .status-ok { color: #4cff00; font-weight: bold; }
 
-input, button{
-  font-size: 20px;
-  padding: 14px 18px;  /* 讓高度跟字一起變大 */
-}
+    .test-panel {
+      background: #444;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      display:none;
+      border: 1px dashed #777;
+    }
+    .test-btn {
+      background: #666;
+      color: white;
+      font-size: 18px;
+      padding: 10px 16px;
+    }
+    .test-btn:active { background: #888; }
 
-    </style>
+    #gameArea { display: none; margin-top: 30px; }
+    .timer { font-size: 46px; color: #00d2ff; font-family: monospace; }
+    .note-display { font-size: 90px; color: yellow; font-weight: bold; margin: 20px 0; }
+    .instruction { color: #ff9999; font-size: 20px; margin-bottom: 10px; }
+    input[type=range] { width: 80%; cursor: pointer; padding: 0; }
+
+    .debug-area {
+      margin-top: 50px;
+      border-top: 1px solid #555;
+      padding-top: 20px;
+      color: gray;
+      font-size: 0.9em;
+    }
+
+    /* 登入 / 新增區塊排版 */
+    #loginBox, #addBox{
+      margin: 0 auto;
+      max-width: 820px;
+    }
+    #loginBox input, #addBox input{
+      max-width: 220px;
+    }
+    #addBox .row{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+  </style>
 </head>
 
 <body>
 
+<!-- ✅ 登入 -->
 <div id="loginBox">
   <input id="idInput" placeholder="輸入編號" />
   <input id="nameInput" placeholder="玩家姓名" />
@@ -50,9 +107,10 @@ input, button{
   <p id="loginMsg"></p>
 </div>
 
+<!-- ✅ 新增人員 -->
 <div id="addBox" style="margin-top:20px;">
-  <h3 style="color:#fff;">➕ 新增人員</h3>
-  <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
+  <h3 style="color:#fff; margin: 10px 0;">➕ 新增人員</h3>
+  <div class="row">
     <input id="newId" placeholder="自動編號" readonly>
     <input id="newName" placeholder="輸入姓名">
     <button onclick="addPlayer()">儲存</button>
@@ -60,23 +118,30 @@ input, button{
   <p id="addMsg"></p>
 </div>
 
+<!-- ✅ 遊戲主系統 -->
 <div id="app" style="display:none;">
 
-  <h1>🎵 ESP32 鋼琴挑戰 (測試版)</h1>
-  <h2>👤 玩家：<span id="userName">---</span>
-      <button type="button" onclick="logout()">登出</button>
+  <h1 style="font-size:30px; margin: 10px 0;">🎵 ESP32 鋼琴挑戰（遊戲版）</h1>
+  <h2 style="font-size:22px; margin: 10px 0;">
+    👤 玩家：<span id="userName">---</span>
+    <button type="button" onclick="logout()">登出</button>
   </h2>
 
-  <!-- ✅ 主頁（遊戲頁）包起來，方便切換到報表頁 -->
   <div id="mainPage">
 
     <div class="box">
-      <h3>1. 裝置連線與測試</h3>
-      <p>LED板: <span id="ledStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectLed()">連接</button></p>
-      <p>按鈕板: <span id="btnStatus">未連線 ❌</span> <button class="btn-connect" onclick="connectBtn()">連接</button></p>
+      <h3 style="margin: 0 0 10px 0;">1. 裝置連線與測試</h3>
+      <p>
+        LED板: <span id="ledStatus">未連線 ❌</span>
+        <button class="btn-connect" onclick="connectLed()">連接</button>
+      </p>
+      <p>
+        按鈕板: <span id="btnStatus">未連線 ❌</span>
+        <button class="btn-connect" onclick="connectBtn()">連接</button>
+      </p>
 
       <div id="hardwareTest" class="test-panel">
-        <h4>🔧 硬體測試區</h4>
+        <h4 style="margin: 0 0 10px 0;">🔧 硬體測試區</h4>
         <p>測試燈號 (點擊亮燈):</p>
         <button class="test-btn" onclick="testLed(1)">1 (藍)</button>
         <button class="test-btn" onclick="testLed(2)">2 (紅)</button>
@@ -87,14 +152,14 @@ input, button{
 
         <p style="margin-top:15px; border-top:1px solid #666; padding-top:10px;">
           測試聲音與按鈕:<br>
-          <label style="font-size:18px; color:#00d2ff;">
+          <label style="font-size:20px; color:#00d2ff;">
             <input type="checkbox" id="soundTestToggle" onchange="toggleSoundTest(this)">
             開啟聲音測試 (自由發聲)
           </label>
         </p>
 
         <p>最後按下的按鈕:
-          <span id="lastPressed" style="font-size:24px; color:yellow; font-weight:bold;">-</span>
+          <span id="lastPressed" style="font-size:28px; color:yellow; font-weight:bold;">-</span>
         </p>
 
         <div style="margin-top:10px;">
@@ -106,9 +171,10 @@ input, button{
     </div>
 
     <div class="box" id="controlBox">
-      <h3>2. 選擇關卡 (遊戲開始)</h3>
+      <h3 style="margin: 0 0 10px 0;">2. 選擇關卡（遊戲開始）</h3>
 
-      <select id="songSelect" style="padding: 10px; font-size: 16px; width: 80%;">
+      <!-- ✅ 歌單：你原本的都OK（1~5） -->
+      <select id="songSelect" style="padding: 12px; font-size: 20px; width: 88%; border-radius: 8px;">
         <option value="3,2,1,2,3,3,3,2,2,2,3,5,5,3,2,1,2,3,3,3,3,2,2,3,2,1">瑪莉有隻小綿羊（完整版）</option>
         <option value="1,1,5,5,4,4,5,3,3,2,2,1,5,5,3,3,2,5,5,3,3,2,1,1,5,5,4,4,5,3,3,2,2,1">小星星（完整版）</option>
         <option value="3,3,4,3,5,4,3,3,4,3,1,3,3,5,4,3,2,1,4,4,3,1,2,1">生日快樂（完整版）</option>
@@ -121,62 +187,17 @@ input, button{
 
       <br><br>
       <button id="startBtn" class="btn-start" onclick="startGame()">開始遊戲！</button>
-
-      <!-- ✅ 新增：學習成效追蹤 -->
-      <br><br>
-
-
     </div>
 
   </div><!-- mainPage end -->
 
   <div id="gameArea">
-    <div class="instruction">看到燈亮 -> 按下正確按鈕才會發聲！</div>
+    <div class="instruction">看到燈亮 → 按下正確按鈕才會發聲！</div>
     <div class="timer"><span id="timeDisplay">0.00</span> 秒</div>
     <div class="note-display" id="currentNote">-</div>
-    <div id="logMsg" style="font-size: 14px; color: #aaa;">等待操作...</div>
+    <div id="logMsg" style="font-size: 18px; color: #aaa;">等待操作...</div>
     <br>
     <button onclick="stopGame()" style="background:#dc3545; color:white;">結束遊戲</button>
-  </div>
-
-  <!-- ✅ 報表頁 -->
-  <div id="reportPage" class="box box-wide" style="display:none;">
-    <h3>📈 學習成效追蹤</h3>
-
-    <div style="display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap;">
-      <label>歌曲</label>
-      <select id="reportSongSelect"
-        style="padding:10px; font-size:16px; min-width:260px;"
-        onchange="loadReport()">
-      <label>開始</label>
-<input id="fromDT" type="datetime-local" step="3600"
-       style="padding:8px; font-size:14px;">
-
-<label>結束</label>
-<input id="toDT" type="datetime-local" step="3600"
-       style="padding:8px; font-size:14px;">
-  <label style="margin-left:10px;">模式</label>
-<select id="reportMode" style="padding:10px; font-size:16px;" onchange="loadReport()">
-  <option value="daily_best">每天最佳(最短)</option>
-  <option value="each_try" selected>每次紀錄(到小時)</option>
-  <option value="hour_best">每小時最佳</option>
-</select>
-
-</select>
-
-   
-      <button onclick="backToMain()" style="padding:10px 18px; background:#555; color:#fff;">返回遊戲</button>
-    </div>
-
-    <div style="margin-top:18px; background:#222; padding:12px; border-radius:10px;">
-      <canvas id="reportChart" height="120"></canvas>
-    </div>
-
-    <p style="margin-top:10px; color:#aaa; font-size:14px;">
-      顯示「每天最佳秒數（最短）」趨勢：左邊=秒數、下方=日期（越低越好）
-    </p>
-
-    <p id="reportMsg" style="color:#ffcc66;"></p>
   </div>
 
   <div class="debug-area">
@@ -189,7 +210,6 @@ input, button{
 (function autoLogoutOnReload() {
   const nav = performance.getEntriesByType("navigation")[0];
   const isReload = nav && nav.type === "reload";
-
   if (isReload) {
     localStorage.removeItem("userId");
     localStorage.removeItem("userName");
@@ -201,7 +221,6 @@ function showLogin() {
   document.getElementById("app").style.display = "none";
   document.getElementById("loginBox").style.display = "block";
   document.getElementById("addBox").style.display = "block";
-  document.getElementById("reportPage").style.display = "none";
 }
 
 function showApp() {
@@ -213,18 +232,8 @@ function showApp() {
 
 function showMainPage() {
   document.getElementById("mainPage").style.display = "block";
-  document.getElementById("reportPage").style.display = "none";
-}
-
-function openReport() {
-  document.getElementById("mainPage").style.display = "none";
-  document.getElementById("reportPage").style.display = "block";
-  initReportSongList(); // 填歌單
-  loadReport();         // 畫圖
-}
-
-function backToMain() {
-  showMainPage();
+  document.getElementById("gameArea").style.display = "none";
+  document.getElementById("controlBox").style.display = "block";
 }
 
 /* ================== 登出 ================== */
@@ -245,6 +254,12 @@ function logout() {
 /* ================== API：查玩家 ================== */
 async function fetchUserById(id) {
   const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data && data.id ? data : null;
+}
+async function fetchUserByName(name) {
+  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache: "no-store" });
   if (!res.ok) return null;
   const data = await res.json();
   return data && data.id ? data : null;
@@ -281,8 +296,7 @@ async function login() {
   }
 }
 
-
-/* ================== 存分數 ================== */
+/* ================== 存分數（保留回傳） ================== */
 async function saveScore(seconds) {
   const playerId = localStorage.getItem("userId");
   const playerName = localStorage.getItem("userName");
@@ -317,7 +331,6 @@ async function loadNextId() {
   try {
     const res = await fetch("/test/api/next_player_id.php", { cache: "no-store" });
     const data = await res.json();
-
     const idEl = document.getElementById("newId");
     idEl.value = data.next_id || "";
     idEl.readOnly = true;
@@ -361,7 +374,7 @@ async function addPlayer() {
   }
 }
 
-/* ================== 輸入編號自動帶姓名 ================== */
+/* ================== 輸入編號/姓名 自動帶資料 ================== */
 function bindIdAutoFill() {
   const idEl = document.getElementById("idInput");
   const nameEl = document.getElementById("nameInput");
@@ -373,7 +386,6 @@ function bindIdAutoFill() {
       const id = idEl.value.trim();
       nameEl.value = "";
       document.getElementById("loginMsg").innerText = "";
-
       if (!id) return;
 
       const user = await fetchUserById(id);
@@ -383,12 +395,6 @@ function bindIdAutoFill() {
   });
 }
 
-async function fetchUserByName(name) {
-  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data && data.id ? data : null; // 期待 {id, name}
-}
 function bindNameAutoFill() {
   const idEl = document.getElementById("idInput");
   const nameEl = document.getElementById("nameInput");
@@ -397,23 +403,17 @@ function bindNameAutoFill() {
 
   nameEl.addEventListener("input", () => {
     clearTimeout(timer);
-
     const name = nameEl.value.trim();
     if (msgEl) msgEl.innerText = "";
 
-    // 名字清空時，同時清空編號
-    if (!name) {
-      idEl.value = "";
-      return;
-    }
+    if (!name) { idEl.value = ""; return; }
 
     timer = setTimeout(async () => {
       try {
         const user = await fetchUserByName(name);
-
         if (user) {
           idEl.value = user.id || "";
-          nameEl.value = user.name || name; // 以資料庫為準（避免大小寫/空格）
+          nameEl.value = user.name || name;
           if (msgEl) msgEl.innerText = "";
         } else {
           idEl.value = "";
@@ -426,8 +426,8 @@ function bindNameAutoFill() {
     }, 300);
   });
 }
-    
-/* ================== BLE / 遊戲區（你原本的） ================== */
+
+/* ================== BLE / 遊戲區 ================== */
 const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
@@ -469,21 +469,6 @@ async function connectLed() {
     alert("LED連線失敗: " + e);
   }
 }
-async function forceLedOff() {
-  if (!ledChar) return;
-
-  const enc = new TextEncoder();
-  const payload = enc.encode("0");
-
-  // 連發 3 次（避免偶發寫入沒成功）
-  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #1 fail", e); }
-  await new Promise(r => setTimeout(r, 30));
-  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #2 fail", e); }
-  await new Promise(r => setTimeout(r, 30));
-  try { await ledChar.writeValue(payload); } catch (e) { console.warn("LED off #3 fail", e); }
-
-  console.log("✅ forceLedOff sent");
-}
 
 async function connectBtn() {
   try {
@@ -510,10 +495,11 @@ async function connectBtn() {
 }
 
 function checkReady() {
-  if (ledChar || document.getElementById("btnStatus").className.includes("status-ok")) {
+  const btnOk = document.getElementById("btnStatus").className.includes("status-ok");
+  if (ledChar || btnOk) {
     document.getElementById("hardwareTest").style.display = "block";
   }
-  if (ledChar && document.getElementById("btnStatus").className.includes("status-ok")) {
+  if (ledChar && btnOk) {
     document.getElementById("startBtn").style.display = "inline-block";
   }
 }
@@ -527,7 +513,7 @@ function toggleSoundTest(checkbox) {
   if (!targetChar) { alert("按鈕板尚未連線！"); checkbox.checked = false; return; }
   if (checkbox.checked) {
     targetChar.writeValue(new TextEncoder().encode("99"));
-    log("開啟聲音測試 (自由模式)");
+    log("開啟聲音測試（自由模式）");
   } else {
     targetChar.writeValue(new TextEncoder().encode("0"));
     log("關閉聲音測試");
@@ -540,20 +526,27 @@ function updateVolume(val) {
 }
 
 function startGame() {
- 
+  // 關閉自由發聲
   document.getElementById("soundTestToggle").checked = false;
+  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
 
+  // ✅ 讀取歌曲（保險：只留 1~5）
   song = document.getElementById("songSelect").value
     .split(",")
-    .map(s => s.trim())
-    .filter(s => s !== "")
-    .map(Number);
+    .map(s => Number(String(s).trim()))
+    .filter(n => Number.isFinite(n) && n >= 1 && n <= 5);
+
+  if (song.length === 0) {
+    alert("歌曲資料錯誤（沒有有效音符 1~5）");
+    return;
+  }
 
   index = 0;
   isPlaying = true;
 
   document.getElementById("controlBox").style.display = "none";
   document.getElementById("hardwareTest").style.display = "none";
+  document.getElementById("mainPage").style.display = "none";
   document.getElementById("gameArea").style.display = "block";
 
   startTime = Date.now();
@@ -570,28 +563,24 @@ function stopGame() {
     clearInterval(timerInt);
     timerInt = null;
   }
-
   isPlaying = false;
 
-  // ✅ 關聲音
-  if (targetChar) {
-    targetChar.writeValue(new TextEncoder().encode("0"));
-  }
-
-  // ✅ 關燈（重點）
+  // 關聲音
+  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
+  // 關燈
   turnOffLed();
 
   document.getElementById("gameArea").style.display = "none";
+  document.getElementById("mainPage").style.display = "block";
   document.getElementById("controlBox").style.display = "block";
   document.getElementById("hardwareTest").style.display = "block";
 }
-
 
 function playNote() {
   if (index >= song.length) {
     if (timerInt) { clearInterval(timerInt); timerInt = null; }
     if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
-    setTimeout(finishGame, 300);
+    setTimeout(finishGame, 250);
     return;
   }
 
@@ -601,7 +590,7 @@ function playNote() {
 
   if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(target)));
   if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(target)));
-  else log("警告: 無法設定 Target，聲音可能不會出來");
+  else log("警告: 無法設定 Target（聲音可能不會出來）");
 }
 
 function onBtnPress(event) {
@@ -631,225 +620,24 @@ async function finishGame() {
   setTimeout(() => {
     alert("恭喜完成！總時間: " + seconds.toFixed(2) + " 秒");
     stopGame();
-  }, 200);
-}
-
-/* ================== ✅ 學習成效追蹤（報表） ================== */
-let progressChart = null;
-
-async function initReportSongList() {
-  const sel = document.getElementById("reportSongSelect");
-  if (!sel) return;
-
-  sel.innerHTML = "";
-
-  // 全部歌曲
-  const optAll = document.createElement("option");
-  optAll.value = "";
-  optAll.textContent = "全部歌曲";
-  sel.appendChild(optAll);
-
-  try {
-    const res = await fetch("/test/api/get_songs.php", { cache: "no-store" });
-    if (!res.ok) throw new Error(await res.text());
-    const rows = await res.json();
-
-    rows.forEach(r => {
-      const name = r.song_name || r.name || r.song || "";
-      if (!name) return;
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      sel.appendChild(opt);
-    });
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// 把日期字串轉成 YYYY-MM-DD
-function toYMD(anyDateStr) {
-  if (!anyDateStr) return null;
-
-  // 可能是 "2026-01-30 12:34:56" 或 "2026/01/30"
-  const s = String(anyDateStr).replace(/\//g, "-");
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1];
-
-  // 可能是 timestamp
-  const n = Number(anyDateStr);
-  if (!isNaN(n) && n > 1000000000) {
-    const d = new Date(n * (n < 2000000000 ? 1000 : 1)); // 秒/毫秒容錯
-    return d.toISOString().slice(0, 10);
-  }
-  return null;
-}
-
-function pickSeconds(row) {
-  // 這裡做容錯：你 DB 欄位叫 seconds / best_time / time / score 都可以
-  const candidates = ["best_time", "seconds", "time", "score", "duration"];
-  for (const k of candidates) {
-    if (row[k] != null && row[k] !== "") return Number(row[k]);
-  }
-  // 有些人會包在 row.value
-  if (row.value != null) return Number(row.value);
-  return NaN;
-}
-
-function pickDate(row) {
-  const candidates = ["play_date", "created_at", "date", "created", "time"];
-  for (const k of candidates) {
-    const v = toYMD(row[k]);
-    if (v) return v;
-  }
-  return null;
+  }, 150);
 }
 
 function turnOffLed() {
   if (ledChar) {
-    try {
-      ledChar.writeValue(new TextEncoder().encode("0"));
-    } catch (e) {
-      console.warn("關燈失敗", e);
-    }
+    try { ledChar.writeValue(new TextEncoder().encode("0")); }
+    catch (e) { console.warn("關燈失敗", e); }
   }
 }
-    
-async function loadReport() {
-  const msgEl = document.getElementById("reportMsg");
-  if (msgEl) msgEl.textContent = "";
-
-  const playerId = localStorage.getItem("userId");
-  if (!playerId) {
-    if (msgEl) msgEl.textContent = "⚠️ 尚未登入";
-    return;
-  }
-
-  const songName = document.getElementById("reportSongSelect")?.value ?? "";
-  const fromDT = document.getElementById("fromDT")?.value || "";
-  const toDT   = document.getElementById("toDT")?.value || "";
-  const mode   = document.getElementById("reportMode")?.value || "daily_best";
-
-  const url = `/test/api/get_scores.php?player_id=${encodeURIComponent(playerId)}`
-    + `&song_name=${encodeURIComponent(songName)}`
-    + `&from=${encodeURIComponent(fromDT)}`
-    + `&to=${encodeURIComponent(toDT)}`;
-
-  let rows = [];
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error(await res.text());
-    rows = await res.json();
-    if (!Array.isArray(rows)) rows = [];
-  } catch (e) {
-    console.error(e);
-    if (msgEl) msgEl.textContent = "❌ 讀取成績失敗（請看 Console / Network Response）";
-    return;
-  }
-
-  // ✅ 將資料標準化（你 DB 欄位就是 seconds / created_at）
-  const parsed = rows
-    .map(r => ({
-      seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
-      created_at: String(r.created_at ?? r.play_date ?? r.date ?? "")
-    }))
-    .filter(x => !isNaN(x.seconds) && x.created_at);
-
-  // ✅ 依模式產生 labels/data
-  let labels = [];
-  let data = [];
-  let xTitle = "日期";
-
-  if (mode === "daily_best") {
-    // 每天最佳（最短）
-    const bestByDate = new Map(); // YYYY-MM-DD -> bestSeconds
-    for (const it of parsed) {
-      const d = it.created_at.slice(0, 10); // 2026-01-30
-      const prev = bestByDate.get(d);
-      if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
-    }
-    labels = Array.from(bestByDate.keys()).sort();
-    data = labels.map(d => bestByDate.get(d));
-    xTitle = "日期";
-
-  } else if (mode === "each_try") {
-    // 每次紀錄（到「小時」）
-    parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
-    labels = parsed.map(it => it.created_at.slice(0, 13)); // "2026-01-30 15"
-    data = parsed.map(it => it.seconds);
-    xTitle = "日期(到小時)";
-
-  } else if (mode === "hour_best") {
-    // 每小時最佳（最短）
-    const bestByHour = new Map(); // "YYYY-MM-DD HH" -> bestSeconds
-    for (const it of parsed) {
-      const h = it.created_at.slice(0, 13); // 2026-01-30 15
-      const prev = bestByHour.get(h);
-      if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
-    }
-    labels = Array.from(bestByHour.keys()).sort();
-    data = labels.map(h => bestByHour.get(h));
-    xTitle = "日期(到小時)";
-  }
-
-  const canvas = document.getElementById("reportChart");
-  if (!canvas) return;
-
-  if (progressChart) {
-    progressChart.destroy();
-    progressChart = null;
-  }
-
-  if (labels.length === 0) {
-    if (msgEl) msgEl.textContent = "目前沒有資料（請調整時間範圍或先玩一局再看）";
-    // 沒資料就畫空圖（避免留著舊圖誤會）
-    progressChart = new Chart(canvas, {
-      type: "line",
-      data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
-      options: { responsive: true }
-    });
-    return;
-  }
-
-  progressChart = new Chart(canvas, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label:
-          mode === "daily_best" ? "每天最佳秒數（越低越好）" :
-          mode === "hour_best"  ? "每小時最佳秒數（越低越好）" :
-                                  "每次秒數（越低越好）",
-        data,
-        borderWidth: 2,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { title: { display: true, text: "秒數" } },
-        x: {
-          title: { display: true, text: xTitle },
-          ticks: { autoSkip: true, maxRotation: 0 }
-        }
-      }
-    }
-  });
-}
-
 
 /* ================== 頁面載入 ================== */
 window.addEventListener("load", () => {
   bindIdAutoFill();
+  bindNameAutoFill();
   loadNextId();
-  bindNameAutoFill(); 
-  initReportSongList();
 
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
-  document.getElementById("fromDT").addEventListener("change", loadReport);
-  document.getElementById("toDT").addEventListener("change", loadReport);
 
   if (savedId && savedName) {
     document.getElementById("userName").innerText = `${savedId}｜${savedName}`;
