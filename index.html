@@ -439,6 +439,12 @@ const BTN_TARGET_UUID  = "3456483e-36e1-4688-b7f5-ea07361b26a8";
 let ledChar = null;
 let volChar = null;
 let targetChar = null;
+// ✅ 音名(Do~So 1~5) 對應到硬體實際鍵位(紅藍黃白綠)
+const NOTE_TO_HW = { 1:2, 2:1, 3:3, 4:5, 5:4 };
+
+function mapToHw(n){
+  return NOTE_TO_HW[n] ?? n;
+}
 
 let isPlaying = false;
 let song = [];
@@ -584,14 +590,29 @@ function playNote() {
     return;
   }
 
-  const target = song[index];
-  document.getElementById("currentNote").innerText = target;
-  document.getElementById("logMsg").innerText = "目標: " + target;
+function playNote() {
+  if (index >= song.length) {
+    if (timerInt) { clearInterval(timerInt); timerInt = null; }
+    if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
+    setTimeout(finishGame, 250);
+    return;
+  }
 
-  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(target)));
-  if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(target)));
+  // song 裡的值是音名：1=Do(藍),2=Re(紅),3=Mi(黃),4=Fa(綠),5=So(白)
+  const note = song[index];
+
+  // ✅ 轉成硬體實際鍵位：1=紅,2=藍,3=黃,4=白,5=綠
+  const hwTarget = mapToHw(note);
+
+  // 畫面仍顯示音名數字(Do~So)
+  document.getElementById("currentNote").innerText = note;
+  document.getElementById("logMsg").innerText = `目標(音名): ${note} → 硬體鍵位: ${hwTarget}`;
+
+  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(hwTarget)));
+  if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(hwTarget)));
   else log("警告: 無法設定 Target（聲音可能不會出來）");
 }
+
 
 function onBtnPress(event) {
   const val = new TextDecoder().decode(event.target.value);
