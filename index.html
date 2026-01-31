@@ -1,676 +1,528 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> 鋼琴遊戲 </title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>鋼琴遊戲</title>
 
-  <style>
-    body{
-      font-family: "Microsoft JhengHei", sans-serif;
-      text-align: center;
-      background: #222;
-      color: white;
-      padding-top: 20px;
-      font-size: 20px; /* ✅ 登入/新增整體字體放大 */
-    }
-
-    .box {
-      border: 1px solid #555;
-      padding: 20px;
-      margin: 15px auto;
-      max-width: 520px;
-      border-radius: 10px;
-      background: #333;
-    }
-
-    input, button{
-      font-size: 20px;
-      padding: 14px 18px;
-      border-radius: 8px;
-      border: none;
-      margin: 6px;
-    }
-    input{
-      width: 200px;
-      border: 1px solid #666;
-    }
-    button{
-      cursor: pointer;
-      background: #555;
-      color: #fff;
-    }
-    button:hover{ filter: brightness(1.05); }
-
-    .btn-connect { background: #007bff; color: white; }
-    .btn-start { background: #28a745; color: white; font-size: 26px; padding: 16px 44px; display: none; }
-    .status-ok { color: #4cff00; font-weight: bold; }
-
-    .test-panel {
-      background: #444;
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 12px;
-      display:none;
-      border: 1px dashed #777;
-    }
-    .test-btn {
-      background: #666;
-      color: white;
-      font-size: 18px;
-      padding: 10px 16px;
-    }
-    .test-btn:active { background: #888; }
-
-    #gameArea { display: none; margin-top: 30px; }
-    .timer { font-size: 46px; color: #00d2ff; font-family: monospace; }
-    .note-display { font-size: 90px; color: yellow; font-weight: bold; margin: 20px 0; }
-    .instruction { color: #ff9999; font-size: 20px; margin-bottom: 10px; }
-    input[type=range] { width: 80%; cursor: pointer; padding: 0; }
-
-    .debug-area {
-      margin-top: 50px;
-      border-top: 1px solid #555;
-      padding-top: 20px;
-      color: gray;
-      font-size: 0.9em;
-    }
-
-    #loginBox, #addBox{
-      margin: 0 auto;
-      max-width: 820px;
-    }
-    #loginBox input, #addBox input{
-      max-width: 220px;
-    }
-    #addBox .row{
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-  </style>
+<style>
+  body{
+    font-family:"Microsoft JhengHei",sans-serif;
+    background:#222;color:#fff;text-align:center;
+    font-size:20px;padding-top:20px;
+  }
+  .box{background:#333;border-radius:10px;padding:20px;margin:15px auto;max-width:760px}
+  .row{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+  button,input,select{
+    font-size:20px;padding:12px 16px;border-radius:8px;border:none;margin:6px
+  }
+  input{border:1px solid #666;min-width:200px}
+  button{background:#555;color:#fff;cursor:pointer}
+  button:hover{filter:brightness(1.05)}
+  .btn-connect{background:#007bff}
+  .btn-start{background:#28a745;font-size:26px;padding:16px 44px;display:none}
+  .status-ok{color:#4cff00;font-weight:bold}
+  #gameArea{display:none;margin-top:30px}
+  .timer{font-size:46px;color:#00d2ff;font-family:monospace}
+  .note-display{font-size:90px;color:yellow;font-weight:bold}
+  .test-panel{display:none;background:#444;padding:12px;border-radius:8px;margin-top:12px}
+  .hint{color:#bbb;margin-top:8px}
+  .small{font-size:16px;color:#aaa}
+</style>
 </head>
 
 <body>
 
 <!-- ✅ 登入 -->
-<div id="loginBox">
-  <input id="idInput" placeholder="輸入床號" />
-  <input id="nameInput" placeholder="住民姓名" />
-  <button onclick="login()">登入</button>
-  <p id="loginMsg"></p>
+<div id="loginBox" class="box">
+  <div class="row">
+    <input id="idInput" placeholder="輸入床號" />
+    <input id="nameInput" placeholder="住民姓名" />
+    <button id="btnLogin">登入</button>
+  </div>
+  <p id="loginMsg" class="hint"></p>
 </div>
 
 <!-- ✅ 新增人員 -->
-<div id="addBox" style="margin-top:20px;">
-  <h3 style="color:#fff; margin: 10px 0;">➕ 新增人員</h3>
+<div id="addBox" class="box">
+  <h3 style="margin:0 0 10px 0;">➕ 新增人員</h3>
   <div class="row">
-    <input id="newId" placeholder="自動編號" readonly>
-    <input id="newName" placeholder="輸入姓名">
-    <button onclick="addPlayer()">儲存</button>
+    <input id="newId" placeholder="自動編號" readonly />
+    <input id="newName" placeholder="輸入姓名" />
+    <button id="btnAdd">儲存</button>
   </div>
-  <p id="addMsg"></p>
+  <p id="addMsg" class="hint"></p>
 </div>
 
-<!-- ✅ 遊戲主系統 -->
-<div id="app" style="display:none;">
+<!-- ✅ 主系統 -->
+<div id="app" style="display:none">
 
-  <h1 style="font-size:30px; margin: 10px 0;">🎵 鋼琴挑戰 </h1>
-  <h2 style="font-size:22px; margin: 10px 0;">
-    👤 住民：<span id="userName">---</span>
-    <button type="button" onclick="logout()">登出</button>
-  </h2>
+  <div class="box">
+    <h2 style="margin:0">
+      👤 住民：<span id="userName">---</span>
+      <button id="btnLogout" style="margin-left:10px;">登出</button>
+    </h2>
+    <p class="small">音名：Do(藍) / Re(紅) / Mi(黃) / So(白) / Fa(綠)；硬體排列：紅、藍、黃、白、綠</p>
+  </div>
 
-  <div id="mainPage">
+  <div class="box">
+    <p>
+      LED：<span id="ledStatus">未連線</span>
+      <button class="btn-connect" id="btnLed">連接</button>
+    </p>
+    <p>
+      按鈕：<span id="btnStatus">未連線</span>
+      <button class="btn-connect" id="btnBtn">連接</button>
+    </p>
 
-    <div class="box">
-      <h3 style="margin: 0 0 10px 0;">1. 裝置連線與測試</h3>
-      <p>
-        LED板: <span id="ledStatus">未連線 ❌</span>
-        <button class="btn-connect" onclick="connectLed()">連接</button>
-      </p>
-      <p>
-        按鈕板: <span id="btnStatus">未連線 ❌</span>
-        <button class="btn-connect" onclick="connectBtn()">連接</button>
-      </p>
-
-      <div id="hardwareTest" class="test-panel">
-        <h4 style="margin: 0 0 10px 0;">🔧 硬體測試區</h4>
-        <p>測試燈號 (點擊亮燈):</p>
-
-        <!-- ✅ 依你說的「實體順序：紅藍黃白綠」 -->
-        <button class="test-btn" onclick="testLed(1)">1 (紅 Re)</button>
-<button class="test-btn" onclick="testLed(2)">2 (藍 Do)</button>
-<button class="test-btn" onclick="testLed(3)">3 (黃 Mi)</button>
-<button class="test-btn" onclick="testLed(4)">4 (白 So)</button>
-<button class="test-btn" onclick="testLed(5)">5 (綠 Fa)</button>
-
-        <button class="test-btn" onclick="testLed(0)">關燈</button>
-
-        <p style="margin-top:15px; border-top:1px solid #666; padding-top:10px;">
-          測試聲音與按鈕:<br>
-          <label style="font-size:20px; color:#00d2ff;">
-            <input type="checkbox" id="soundTestToggle" onchange="toggleSoundTest(this)">
-            開啟聲音測試 (自由發聲)
-          </label>
-        </p>
-
-        <p>最後按下的按鈕:
-          <span id="lastPressed" style="font-size:28px; color:yellow; font-weight:bold;">-</span>
-        </p>
-
-        <div style="margin-top:10px;">
-          🔊 音量: <span id="volVal">25</span>%
-          <br>
-          <input type="range" min="0" max="100" value="25" oninput="updateVolume(this.value)">
-        </div>
-      </div>
+    <div id="hardwareTest" class="test-panel">
+      <div style="margin-bottom:8px;">測試燈號（硬體順序：紅藍黃白綠）</div>
+      <button id="t1">1 紅 Re</button>
+      <button id="t2">2 藍 Do</button>
+      <button id="t3">3 黃 Mi</button>
+      <button id="t4">4 白 So</button>
+      <button id="t5">5 綠 Fa</button>
+      <button id="t0" style="background:#444;">關燈</button>
     </div>
+  </div>
 
-    <div class="box" id="controlBox">
-      <h3 style="margin: 0 0 10px 0;">2. 選擇關卡（遊戲開始）</h3>
+  <div class="box">
+    <div style="margin-bottom:10px;">🎵 選擇歌曲</div>
+    <select id="songSelect" style="width:92%;max-width:680px;">
+      <!-- 注意：歌譜用「音名數字」：1=Do、2=Re、3=Mi、4=Fa、5=So -->
+      <option value="1,1,2,2,3,3,2,1,1,2,2,3,3,2">小星星(長)</option>
+      <option value="3,1,2,1,3,3,3,1,1,1,3,4,4,3,1,2,1,3,3,3,3,1,1,3,1,2">瑪莉有隻小綿羊(長)</option>
+      <option value="2,3,2,3,4,3,2,1,2,3,4,3,2,2,3,2,3,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2">拔蘿蔔(長)</option>
+      <option value="2,2,3,4,4,3,2,1,2,3,4,3,2,2,2,3,4,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2,1">小兔子(長)</option>
+      <option value="2,3,4,4,5,4,3,2,2,3,4,3,2,2,3,4,4,5,4,3,2,2,3,4,3,2,3,4,5,4,3,2">划呀划小船(長)</option>
 
-      <select id="songSelect" style="padding: 12px; font-size: 20px; width: 88%; border-radius: 8px;">
-        <option value="3,1,2,1,3,3,3,1,1,1,3,4,4,3,1,2,1,3,3,3,3,1,1,3,1,2">瑪莉有隻小綿羊</option>
-        <option value="2,2,4,4,5,5,4,3,3,1,1,2,4,4,3,3,1,4,4,3,3,1,2,2,4,4,5,5,4,3,3,1,1,2">小星星</option>
-        <option value="3,3,5,3,4,5,3,3,5,3,2,3,3,4,5,3,1,2,5,5,3,2,1,2">生日快樂</option>
-        <option value="2,1,3,2,2,1,3,2,3,5,4,3,5,4,4,3,4,4,3,4,2,4,2">兩隻老虎</option>
-        <option value="4,3,3,5,1,1,2,1,3,5,4,4,4,1,1,1,1,1,3,5,3,3,3,3,5,4,4,3,3,5,1,1,2">小蜜蜂</option>
-        <option value="3,3,5,4,4,5,3,1,2,2,1,3,3,1,1,3,3,5,4,4,5,3,1,2,2,1,3,1,2,2">歡樂頌</option>
-        <option value="2,1,3,5,4,4,5,3,1,2,2,1,3,5,4,4,5,3,1,2">音階上下</option>
-        <option value="2,3,4,3,2,3,4,3,1,5,4,5,1,5,4,5,2,3,4,3">分解和弦</option>
-        <option value="2,2,3,3,4,3,2,1,2,3,4,4,3">划龍舟</option>
-        <option value="2,3,2,3,4,3,2,1,2,3,4,3,2,2,3,2,3,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2">拔蘿蔔</option>
-        <option value="2,2,3,4,4,3,2,1,2,3,4,3,2,2,2,3,4,4,3,2,1,2,3,4,3,2,3,4,5,4,3,2,1">小兔子</option>
-        <option value="2,3,4,4,5,4,3,2,2,3,4,3,2,2,3,4,4,5,4,3,2,2,3,4,3,2,3,4,5,4,3,2">划呀划小船</option>
+      <!-- ✅ 你要我加「沒有的 5 首歌」(都只用 1~5) -->
+      <option value="1,2,3,1,1,2,3,1,3,4,5,3,4,5,5,3,5,5,3,5,1,5,1,1,2,3,1,1,2,3,1">兩隻老虎(長)</option>
+      <option value="3,3,4,5,5,4,3,2,1,1,2,3,3,2,2,3,3,4,5,5,4,3,2,1,1,2,3,2,1,1">歡樂頌(長)</option>
+      <option value="5,3,3,4,2,2,1,2,3,4,5,5,5,2,2,2,2,2,3,4,3,3,3,3,4,5,5,3,3,4,2,2,1">小蜜蜂(長)</option>
+      <option value="1,2,3,4,5,5,4,3,2,1,1,2,3,4,5,5,4,3,2,1,1,2,3,2,1,1">音階上下(長)</option>
+      <option value="1,3,5,3,1,3,5,3,2,4,5,4,2,4,5,4,1,3,5,3,2,4,5,4,2,4,5,4">分解和弦(長)</option>
+    </select>
+    <br><br>
+    <button id="startBtn" class="btn-start">開始遊戲</button>
+    <p id="warnMsg" class="hint"></p>
+  </div>
 
-        
-        
-
-
-      
-      </select>
-
-      <br><br>
-      <button id="startBtn" class="btn-start" onclick="startGame()">開始遊戲！</button>
-    </div>
-
-  </div><!-- mainPage end -->
-
-  <div id="gameArea">
-    <div class="instruction">看到燈亮 → 按下正確按鈕才會發聲！</div>
+  <div id="gameArea" class="box">
     <div class="timer"><span id="timeDisplay">0.00</span> 秒</div>
     <div class="note-display" id="currentNote">-</div>
-    <div id="logMsg" style="font-size: 18px; color: #aaa;">等待操作...</div>
-    <br>
-    <button onclick="stopGame()" style="background:#dc3545; color:white;">結束遊戲</button>
+    <p id="logMsg" class="hint">等待開始…</p>
+    <button id="btnStop" style="background:#dc3545">結束</button>
   </div>
 
-  <div class="debug-area">
-    <p>除錯訊息: <span id="debugText">無</span></p>
+  <div class="box">
+    <div class="small">除錯：<span id="debugText">無</span></div>
   </div>
-
 </div>
 
 <script>
-(function autoLogoutOnReload() {
-  const nav = performance.getEntriesByType("navigation")[0];
-  const isReload = nav && nav.type === "reload";
-  if (isReload) {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userName");
-  }
-})();
+/* ========= 一律用 getElementById（避免「沒跑出來」） ========= */
+const $ = (id)=>document.getElementById(id);
 
-/* ================== 畫面切換 ================== */
-function showLogin() {
-  document.getElementById("app").style.display = "none";
-  document.getElementById("loginBox").style.display = "block";
-  document.getElementById("addBox").style.display = "block";
+const el = {
+  loginBox: $("loginBox"),
+  addBox: $("addBox"),
+  app: $("app"),
+  idInput: $("idInput"),
+  nameInput: $("nameInput"),
+  loginMsg: $("loginMsg"),
+  newId: $("newId"),
+  newName: $("newName"),
+  addMsg: $("addMsg"),
+  userName: $("userName"),
+  ledStatus: $("ledStatus"),
+  btnStatus: $("btnStatus"),
+  hardwareTest: $("hardwareTest"),
+  songSelect: $("songSelect"),
+  startBtn: $("startBtn"),
+  warnMsg: $("warnMsg"),
+  gameArea: $("gameArea"),
+  timeDisplay: $("timeDisplay"),
+  currentNote: $("currentNote"),
+  logMsg: $("logMsg"),
+  debugText: $("debugText"),
+
+  btnLogin: $("btnLogin"),
+  btnAdd: $("btnAdd"),
+  btnLogout: $("btnLogout"),
+  btnLed: $("btnLed"),
+  btnBtn: $("btnBtn"),
+  btnStop: $("btnStop"),
+
+  t0: $("t0"), t1: $("t1"), t2: $("t2"), t3: $("t3"), t4: $("t4"), t5: $("t5"),
+};
+
+/* ========= API 路徑（照你之前用的） ========= */
+const API = {
+  loginById: (id)=>`/test/api/login.php?id=${encodeURIComponent(id)}`,
+  findByName: (name)=>`/test/api/find_player.php?name=${encodeURIComponent(name)}`,
+  nextId: ()=>`/test/api/next_player_id.php`,
+  addPlayer: ()=>`/test/api/add_player.php`,
+  saveScore: ()=>`/test/api/save_score.php`,
+};
+
+function log(msg){
+  el.debugText.textContent = msg;
+  console.log(msg);
 }
 
-function showApp() {
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("addBox").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  showMainPage();
+/* ========= 顯示/隱藏 ========= */
+function showLogin(){
+  el.app.style.display = "none";
+  el.loginBox.style.display = "block";
+  el.addBox.style.display = "block";
+}
+function showApp(){
+  el.loginBox.style.display = "none";
+  el.addBox.style.display = "none";
+  el.app.style.display = "block";
 }
 
-function showMainPage() {
-  document.getElementById("mainPage").style.display = "block";
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("controlBox").style.display = "block";
-}
-
-/* ================== 登出 ================== */
-function logout() {
-  try { stopGame(); } catch(e) {}
-
-  localStorage.removeItem("userId");
-  localStorage.removeItem("userName");
-
-  document.getElementById("idInput").value = "";
-  document.getElementById("nameInput").value = "";
-  document.getElementById("loginMsg").innerText = "";
-  document.getElementById("userName").innerText = "---";
-
-  showLogin();
-}
-
-/* ================== API：查玩家 ================== */
-async function fetchUserById(id) {
-  const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-  if (!res.ok) return null;
+/* ========= 登入 / 新增 ========= */
+async function fetchUserById(id){
+  const res = await fetch(API.loginById(id), {cache:"no-store"});
+  if(!res.ok) return null;
   const data = await res.json();
   return data && data.id ? data : null;
 }
-async function fetchUserByName(name) {
-  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache: "no-store" });
-  if (!res.ok) return null;
+async function fetchUserByName(name){
+  const res = await fetch(API.findByName(name), {cache:"no-store"});
+  if(!res.ok) return null;
   const data = await res.json();
   return data && data.id ? data : null;
 }
 
-/* ================== 登入 ================== */
-async function login() {
-  const id = document.getElementById("idInput").value.trim();
-  const name = document.getElementById("nameInput").value.trim();
-  const msg = document.getElementById("loginMsg");
+async function login(){
+  const id = el.idInput.value.trim();
+  const name = el.nameInput.value.trim();
+  if(!id && !name){ el.loginMsg.textContent = "請輸入床號或姓名"; return; }
 
-  if (!id && !name) { msg.innerText = "請輸入編號或姓名"; return; }
-  msg.innerText = "查詢中...";
-
-  try {
+  el.loginMsg.textContent = "查詢中...";
+  try{
     let user = null;
-    if (id) user = await fetchUserById(id);
+    if(id) user = await fetchUserById(id);
     else user = await fetchUserByName(name);
 
-    if (!user) { msg.innerText = "找不到此玩家"; return; }
+    if(!user){ el.loginMsg.textContent = "找不到此住民"; return; }
 
     localStorage.setItem("userId", user.id);
     localStorage.setItem("userName", user.name);
 
-    document.getElementById("idInput").value = user.id;
-    document.getElementById("nameInput").value = user.name;
-    document.getElementById("userName").innerText = `${user.id}｜${user.name}`;
+    el.idInput.value = user.id;
+    el.nameInput.value = user.name;
+    el.userName.textContent = `${user.id}｜${user.name}`;
 
-    msg.innerText = "";
+    el.loginMsg.textContent = "";
     showApp();
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "登入失敗（請看 Console）";
+  }catch(err){
+    console.error(err);
+    el.loginMsg.textContent = "登入失敗（請看 Console）";
   }
 }
 
-/* ================== 存分數（保留回傳） ================== */
-async function saveScore(seconds) {
-  const playerId = localStorage.getItem("userId");
-  const playerName = localStorage.getItem("userName");
-  const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
-
-  if (!playerId || !playerName) {
-    log("⚠️ 未登入，略過存分數");
-    return;
-  }
-
-  const res = await fetch(`/test/api/save_score.php`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      player_id: playerId,
-      player_name: playerName,
-      song_name: songName,
-      seconds: Number(seconds)
-    })
-  });
-
-  const t = await res.text();
-  if (!res.ok) log("❌ 存分數失敗: " + t);
-  else log("✅ 已存分數: " + t);
-}
-
-/* ================== 新增人員：取得下一號 ================== */
-async function loadNextId() {
-  const msg = document.getElementById("addMsg");
-  msg.innerText = "";
-
-  try {
-    const res = await fetch("/test/api/next_player_id.php", { cache: "no-store" });
+async function loadNextId(){
+  el.addMsg.textContent = "";
+  try{
+    const res = await fetch(API.nextId(), {cache:"no-store"});
     const data = await res.json();
-    const idEl = document.getElementById("newId");
-    idEl.value = data.next_id || "";
-    idEl.readOnly = true;
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "取得下一號失敗（請看 Console）";
+    el.newId.value = data.next_id || "";
+  }catch(err){
+    console.error(err);
+    el.addMsg.textContent = "取得下一號失敗（請看 Console）";
   }
 }
 
-/* ================== 新增人員：存回 DB ================== */
-async function addPlayer() {
-  const id = document.getElementById("newId").value.trim();
-  const name = document.getElementById("newName").value.trim();
-  const msg = document.getElementById("addMsg");
+async function addPlayer(){
+  const id = el.newId.value.trim();
+  const name = el.newName.value.trim();
+  if(!id){ el.addMsg.textContent = "沒有自動編號"; return; }
+  if(!name){ el.addMsg.textContent = "請輸入姓名"; return; }
 
-  if (!id) { msg.innerText = "沒有自動編號"; return; }
-  if (!name) { msg.innerText = "請輸入姓名"; return; }
-
-  msg.innerText = "儲存中...";
-
-  try {
-    const res = await fetch("/test/api/add_player.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name })
+  el.addMsg.textContent = "儲存中...";
+  try{
+    const res = await fetch(API.addPlayer(), {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({id, name})
     });
-
     const text = await res.text();
-    if (!res.ok) { msg.innerText = "新增失敗：" + text; return; }
+    if(!res.ok){ el.addMsg.textContent = "新增失敗：" + text; return; }
 
-    msg.innerText = `✅ 新增成功（${id}｜${name}）`;
-
-    document.getElementById("idInput").value = id;
-    document.getElementById("nameInput").value = name;
-
-    document.getElementById("newName").value = "";
+    el.addMsg.textContent = `✅ 新增成功（${id}｜${name}）`;
+    el.idInput.value = id;
+    el.nameInput.value = name;
+    el.newName.value = "";
     await loadNextId();
-  } catch (e) {
-    console.error(e);
-    msg.innerText = "新增失敗（請看 Console）";
+  }catch(err){
+    console.error(err);
+    el.addMsg.textContent = "新增失敗（請看 Console）";
   }
 }
 
-/* ================== 輸入編號/姓名 自動帶資料 ================== */
-function bindIdAutoFill() {
-  const idEl = document.getElementById("idInput");
-  const nameEl = document.getElementById("nameInput");
-  let timer = null;
+function logout(){
+  try{ stopGame(); }catch(e){}
+  localStorage.removeItem("userId");
+  localStorage.removeItem("userName");
+  location.reload();
+}
 
-  idEl.addEventListener("input", () => {
-    clearTimeout(timer);
-    timer = setTimeout(async () => {
-      const id = idEl.value.trim();
-      nameEl.value = "";
-      document.getElementById("loginMsg").innerText = "";
-      if (!id) return;
+/* ========= 自動帶入（床號/姓名） ========= */
+function bindAutoFill(){
+  let t1=null, t2=null;
 
+  el.idInput.addEventListener("input", ()=>{
+    clearTimeout(t1);
+    t1 = setTimeout(async ()=>{
+      const id = el.idInput.value.trim();
+      el.loginMsg.textContent = "";
+      if(!id) return;
       const user = await fetchUserById(id);
-      if (user) nameEl.value = user.name || "";
-      else document.getElementById("loginMsg").innerText = "找不到此編號";
-    }, 300);
+      if(user) el.nameInput.value = user.name || "";
+      else el.loginMsg.textContent = "找不到此床號";
+    }, 250);
   });
-}
 
-function bindNameAutoFill() {
-  const idEl = document.getElementById("idInput");
-  const nameEl = document.getElementById("nameInput");
-  const msgEl = document.getElementById("loginMsg");
-  let timer = null;
-
-  nameEl.addEventListener("input", () => {
-    clearTimeout(timer);
-    const name = nameEl.value.trim();
-    if (msgEl) msgEl.innerText = "";
-
-    if (!name) { idEl.value = ""; return; }
-
-    timer = setTimeout(async () => {
-      try {
-        const user = await fetchUserByName(name);
-        if (user) {
-          idEl.value = user.id || "";
-          nameEl.value = user.name || name;
-          if (msgEl) msgEl.innerText = "";
-        } else {
-          idEl.value = "";
-          if (msgEl) msgEl.innerText = "找不到此姓名";
-        }
-      } catch (e) {
-        console.error(e);
-        if (msgEl) msgEl.innerText = "查詢失敗（請看 Console）";
+  el.nameInput.addEventListener("input", ()=>{
+    clearTimeout(t2);
+    t2 = setTimeout(async ()=>{
+      const name = el.nameInput.value.trim();
+      el.loginMsg.textContent = "";
+      if(!name){ el.idInput.value=""; return; }
+      const user = await fetchUserByName(name);
+      if(user){
+        el.idInput.value = user.id || "";
+        el.nameInput.value = user.name || name;
+      }else{
+        el.idInput.value = "";
+        el.loginMsg.textContent = "找不到此姓名";
       }
-    }, 300);
+    }, 250);
   });
 }
 
-/* ================== BLE / 遊戲區 ================== */
+/* ========= BLE / 遊戲 ========= */
 const LED_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
 const LED_CHAR = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
-
 const BTN_SERVICE_UUID = "1234c201-1fb5-459e-8fcc-c5c9c331914b";
 const BTN_NOTIFY_UUID  = "5678483e-36e1-4688-b7f5-ea07361b26a8";
-const BTN_VOL_UUID     = "9012483e-36e1-4688-b7f5-ea07361b26a8";
 const BTN_TARGET_UUID  = "3456483e-36e1-4688-b7f5-ea07361b26a8";
 
-let ledChar = null;
-let volChar = null;
-let targetChar = null;
+let ledChar=null, targetChar=null;
+let song=[], idx=0, isPlaying=false, timerInt=null, startTime=0;
 
 /*
-你要的音名對應：
-藍 Do、紅 Re、黃 Mi、綠 Fa、白 So
+音名（歌譜用）：
+1=Do(藍) 2=Re(紅) 3=Mi(黃) 4=Fa(綠) 5=So(白)
 
-硬體實際排列（鍵位）：
-1=紅、2=藍、3=黃、4=白、5=綠
+硬體鍵位排列（你現場）：
+1=紅 2=藍 3=黃 4=白 5=綠
 
-所以：音名(1~5) -> 硬體鍵位(1~5)
-1(Do/藍)->2
-2(Re/紅)->1
-3(Mi/黃)->3
-4(Fa/綠)->5
-5(So/白)->4
+所以 音名 -> 硬體：
+Do(1)->2
+Re(2)->1
+Mi(3)->3
+Fa(4)->5
+So(5)->4
 */
-const NOTE_TO_HW = { 1:2, 2:1, 3:3, 4:5, 5:4 };
+const NOTE_TO_HW = {1:2,2:1,3:3,4:5,5:4};
+const NOTE_NAME  = {1:"Do",2:"Re",3:"Mi",4:"Fa",5:"So"};
+
 function mapToHw(n){ return NOTE_TO_HW[n] ?? n; }
 
-let isPlaying = false;
-let song = [];
-let index = 0;
-let startTime = 0;
-let timerInt = null;
-
-function log(msg) {
-  const el = document.getElementById("debugText");
-  if (el) el.innerText = msg;
-  console.log(msg);
-}
-
-async function connectLed() {
-  try {
+async function connectLed(){
+  try{
     const dev = await navigator.bluetooth.requestDevice({
-      filters: [{ name: "ESP32_LED_Control" }],
-      optionalServices: [LED_UUID]
+      filters:[{name:"ESP32_LED_Control"}],
+      optionalServices:[LED_UUID]
     });
     const srv = await dev.gatt.connect();
     const svc = await srv.getPrimaryService(LED_UUID);
     ledChar = await svc.getCharacteristic(LED_CHAR);
 
-    document.getElementById("ledStatus").innerHTML = "已連線 ✅";
-    document.getElementById("ledStatus").className = "status-ok";
-    checkReady();
-  } catch (e) {
-    alert("LED連線失敗: " + e);
+    el.ledStatus.textContent="已連線 ✅";
+    el.ledStatus.className="status-ok";
+    ready();
+  }catch(e){
+    alert("LED 連線失敗：" + e);
   }
 }
 
-async function connectBtn() {
-  try {
+async function connectBtn(){
+  try{
     const dev = await navigator.bluetooth.requestDevice({
-      filters: [{ name: "ESP32_Button_Input" }],
-      optionalServices: [BTN_SERVICE_UUID]
+      filters:[{name:"ESP32_Button_Input"}],
+      optionalServices:[BTN_SERVICE_UUID]
     });
     const srv = await dev.gatt.connect();
     const svc = await srv.getPrimaryService(BTN_SERVICE_UUID);
 
-    const notifyChar = await svc.getCharacteristic(BTN_NOTIFY_UUID);
-    await notifyChar.startNotifications();
-    notifyChar.addEventListener("characteristicvaluechanged", onBtnPress);
+    const notify = await svc.getCharacteristic(BTN_NOTIFY_UUID);
+    targetChar  = await svc.getCharacteristic(BTN_TARGET_UUID);
 
-    try { volChar = await svc.getCharacteristic(BTN_VOL_UUID); updateVolume(25); } catch(e){}
-    try { targetChar = await svc.getCharacteristic(BTN_TARGET_UUID); } catch(e){ log("找不到 Target 特徵!"); }
+    await notify.startNotifications();
+    notify.addEventListener("characteristicvaluechanged", onBtnPress);
 
-    document.getElementById("btnStatus").innerHTML = "已連線 ✅";
-    document.getElementById("btnStatus").className = "status-ok";
-    checkReady();
-  } catch (e) {
-    alert("按鈕連線失敗: " + e);
+    el.btnStatus.textContent="已連線 ✅";
+    el.btnStatus.className="status-ok";
+    ready();
+  }catch(e){
+    alert("按鈕連線失敗：" + e);
   }
 }
 
-function checkReady() {
-  const btnOk = document.getElementById("btnStatus").className.includes("status-ok");
-  if (ledChar || btnOk) document.getElementById("hardwareTest").style.display = "block";
-  if (ledChar && btnOk) document.getElementById("startBtn").style.display = "inline-block";
-}
-
-function testLed(num) {
-  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(num)));
-  else alert("LED板尚未連線！");
-}
-
-function toggleSoundTest(checkbox) {
-  if (!targetChar) { alert("按鈕板尚未連線！"); checkbox.checked = false; return; }
-  if (checkbox.checked) {
-    targetChar.writeValue(new TextEncoder().encode("99"));
-    log("開啟聲音測試（自由模式）");
-  } else {
-    targetChar.writeValue(new TextEncoder().encode("0"));
-    log("關閉聲音測試");
+function ready(){
+  el.hardwareTest.style.display = "block";
+  if(ledChar && targetChar){
+    el.startBtn.style.display = "inline-block";
+    el.warnMsg.textContent = "";
+  }else{
+    el.warnMsg.textContent = "請先完成 LED 與 按鈕 兩邊連線，才可開始遊戲";
   }
 }
 
-function updateVolume(val) {
-  document.getElementById("volVal").innerText = val;
-  if (volChar) volChar.writeValue(new TextEncoder().encode(String(val)));
+function testLed(n){
+  if(!ledChar){ alert("LED 尚未連線"); return; }
+  ledChar.writeValue(new TextEncoder().encode(String(n)));
 }
 
-function startGame() {
-  document.getElementById("soundTestToggle").checked = false;
-  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
-
-  song = document.getElementById("songSelect").value
-    .split(",")
-    .map(s => Number(String(s).trim()))
-    .filter(n => Number.isFinite(n) && n >= 1 && n <= 5);
-
-  if (song.length === 0) {
-    alert("歌曲資料錯誤（沒有有效音符 1~5）");
+function startGame(){
+  if(!(ledChar && targetChar)){
+    el.warnMsg.textContent = "⚠️ 請先連線 LED 與按鈕板";
     return;
   }
 
-  index = 0;
-  isPlaying = true;
+  song = el.songSelect.value.split(",").map(s=>Number(String(s).trim()))
+    .filter(n=>Number.isFinite(n) && n>=1 && n<=5);
 
-  document.getElementById("controlBox").style.display = "none";
-  document.getElementById("hardwareTest").style.display = "none";
-  document.getElementById("mainPage").style.display = "none";
-  document.getElementById("gameArea").style.display = "block";
+  if(song.length===0){ alert("歌曲資料錯誤"); return; }
 
-  startTime = Date.now();
-  timerInt = setInterval(() => {
-    const t = (Date.now() - startTime) / 1000;
-    document.getElementById("timeDisplay").innerText = t.toFixed(2);
-  }, 30);
+  idx=0; isPlaying=true;
+  el.gameArea.style.display="block";
+  el.logMsg.textContent="開始！";
+
+  startTime=Date.now();
+  if(timerInt) clearInterval(timerInt);
+  timerInt=setInterval(()=>{
+    el.timeDisplay.textContent=((Date.now()-startTime)/1000).toFixed(2);
+  },30);
 
   playNote();
 }
 
-function stopGame() {
-  if (timerInt) { clearInterval(timerInt); timerInt = null; }
-  isPlaying = false;
+function playNote(){
+  if(!isPlaying) return;
+  if(idx>=song.length){ finishGame(); return; }
 
-  if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
-  turnOffLed();
+  const note = song[idx];        // 1~5 音名
+  const hw   = mapToHw(note);    // 1~5 硬體鍵位
 
-  document.getElementById("gameArea").style.display = "none";
-  document.getElementById("mainPage").style.display = "block";
-  document.getElementById("controlBox").style.display = "block";
-  document.getElementById("hardwareTest").style.display = "block";
-}
-
-function playNote() {
-  if (index >= song.length) {
-    if (timerInt) { clearInterval(timerInt); timerInt = null; }
-    if (targetChar) targetChar.writeValue(new TextEncoder().encode("0"));
-    setTimeout(finishGame, 250);
-    return;
-  }
-
-  const note = song[index];          // 1~5（音名）
-  const hwTarget = mapToHw(note);    // 轉成硬體鍵位 1~5
-
-  document.getElementById("currentNote").innerText = note;
-  document.getElementById("logMsg").innerText = `目標：${note}`;
+  // 顯示：用音名更直覺
+  el.currentNote.textContent = `${note}\n${NOTE_NAME[note] || ""}`.trim();
+  el.logMsg.textContent = `目標：${NOTE_NAME[note]}（按下對應按鈕）`;
 
   // 先亮燈
-  if (ledChar) {
-    ledChar.writeValue(new TextEncoder().encode(String(hwTarget)));
-  }
+  ledChar.writeValue(new TextEncoder().encode(String(hw)));
 
   // 再送聲音目標（延遲，避免第一顆被吃掉）
-  if (targetChar) {
-    setTimeout(() => {
-      targetChar.writeValue(new TextEncoder().encode(String(hwTarget)));
-    }, 60);
-  }
+  setTimeout(()=>{
+    if(targetChar) targetChar.writeValue(new TextEncoder().encode(String(hw)));
+  }, 60);
 }
 
-function onBtnPress(event) {
-  const val = new TextDecoder().decode(event.target.value);
-  const pressed = parseInt(val, 10);
+function onBtnPress(e){
+  if(!isPlaying) return;
+  const pressed = parseInt(new TextDecoder().decode(e.target.value), 10);
 
-  document.getElementById("lastPressed").innerText = pressed;
-  if (!isPlaying) return;
+  const note = song[idx];
+  const hw   = mapToHw(note);
 
-  // ✅ 比對也必須用硬體鍵位
-  const note = song[index];
-  const hwTarget = mapToHw(note);
-
-  if (pressed === hwTarget) {
-    index++;
+  if(pressed === hw){
+    idx++;
     setTimeout(playNote, 50);
-  } else {
-    document.getElementById("logMsg").innerText = "❌ 按錯了！(靜音)";
+  }else{
+    el.logMsg.textContent = "❌ 按錯了（再試一次）";
   }
 }
 
+async function saveScore(seconds){
+  const playerId = localStorage.getItem("userId");
+  const playerName = localStorage.getItem("userName");
+  const songName = el.songSelect.options[el.songSelect.selectedIndex]?.textContent || "unknown";
+  if(!playerId || !playerName) return;
 
-async function finishGame() {
-  isPlaying = false;
-  if (ledChar) ledChar.writeValue(new TextEncoder().encode("0"));
+  try{
+    const res = await fetch(API.saveScore(), {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        player_id: playerId,
+        player_name: playerName,
+        song_name: songName,
+        seconds: Number(seconds)
+      })
+    });
+    const t = await res.text();
+    if(!res.ok) log("存分數失敗: " + t);
+    else log("已存分數: " + t);
+  }catch(err){
+    console.error(err);
+    log("存分數失敗（網路/API）");
+  }
+}
 
-  const seconds = parseFloat(document.getElementById("timeDisplay").innerText) || 0;
+async function finishGame(){
+  isPlaying=false;
+  if(timerInt){ clearInterval(timerInt); timerInt=null; }
+  try{ ledChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
+  try{ targetChar.writeValue(new TextEncoder().encode("0")); }catch(e){}
+
+  const seconds = parseFloat(el.timeDisplay.textContent) || 0;
   await saveScore(seconds);
 
-  document.getElementById("currentNote").innerText = "🎉";
-  setTimeout(() => {
-    alert("恭喜完成！總時間: " + seconds.toFixed(2) + " 秒");
-    stopGame();
-  }, 150);
+  alert("完成！總時間：" + seconds.toFixed(2) + " 秒");
+  stopGame();
 }
 
-function turnOffLed() {
-  if (ledChar) {
-    try { ledChar.writeValue(new TextEncoder().encode("0")); }
-    catch (e) { console.warn("關燈失敗", e); }
-  }
+function stopGame(){
+  isPlaying=false;
+  if(timerInt){ clearInterval(timerInt); timerInt=null; }
+  el.gameArea.style.display="none";
+  try{ ledChar?.writeValue(new TextEncoder().encode("0")); }catch(e){}
+  try{ targetChar?.writeValue(new TextEncoder().encode("0")); }catch(e){}
 }
 
-/* ================== 頁面載入 ================== */
-window.addEventListener("load", () => {
-  bindIdAutoFill();
-  bindNameAutoFill();
-  loadNextId();
+/* ========= 初始化 ========= */
+document.addEventListener("DOMContentLoaded", async ()=>{
+  // 按鈕綁定（避免 inline onclick 在某些環境失效）
+  el.btnLogin.addEventListener("click", login);
+  el.btnAdd.addEventListener("click", addPlayer);
+  el.btnLogout.addEventListener("click", logout);
+  el.btnLed.addEventListener("click", connectLed);
+  el.btnBtn.addEventListener("click", connectBtn);
+  el.startBtn.addEventListener("click", startGame);
+  el.btnStop.addEventListener("click", stopGame);
+
+  el.t0.addEventListener("click", ()=>testLed(0));
+  el.t1.addEventListener("click", ()=>testLed(1));
+  el.t2.addEventListener("click", ()=>testLed(2));
+  el.t3.addEventListener("click", ()=>testLed(3));
+  el.t4.addEventListener("click", ()=>testLed(4));
+  el.t5.addEventListener("click", ()=>testLed(5));
+
+  bindAutoFill();
+  await loadNextId();
 
   const savedId = localStorage.getItem("userId");
   const savedName = localStorage.getItem("userName");
-
-  if (savedId && savedName) {
-    document.getElementById("userName").innerText = `${savedId}｜${savedName}`;
+  if(savedId && savedName){
+    el.userName.textContent = `${savedId}｜${savedName}`;
     showApp();
-  } else {
+  }else{
     showLogin();
   }
 });
