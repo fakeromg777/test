@@ -598,26 +598,23 @@ function playNote() {
     return;
   }
 
-  const note = song[index];              // 1~5（音名）
-  const hwTarget = mapToHw(note);         // 轉成硬體鍵位
+  const note = song[index];          // 1~5（音名）
+  const hwTarget = mapToHw(note);    // 轉成硬體鍵位 1~5
 
   document.getElementById("currentNote").innerText = note;
   document.getElementById("logMsg").innerText = `目標：${note}`;
 
-  // LED 可以先亮（沒問題）
+  // 先亮燈
   if (ledChar) {
     ledChar.writeValue(new TextEncoder().encode(String(hwTarget)));
   }
 
-  // 🔑 關鍵：聲音目標延遲送出（避免第一顆被吃）
+  // 再送聲音目標（延遲，避免第一顆被吃掉）
   if (targetChar) {
     setTimeout(() => {
       targetChar.writeValue(new TextEncoder().encode(String(hwTarget)));
-    }, 60);   // 50~80ms 都可以，60 很穩
+    }, 60);
   }
-}
-  if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(hwTarget)));
-  if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(hwTarget)));
 }
 
 function onBtnPress(event) {
