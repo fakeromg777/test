@@ -141,11 +141,12 @@
         <p>測試燈號 (點擊亮燈):</p>
 
         <!-- ✅ 依你說的「實體順序：紅藍黃白綠」 -->
-        <button class="test-btn" onclick="testLed(1)">1 (紅)</button>
-        <button class="test-btn" onclick="testLed(2)">2 (藍)</button>
-        <button class="test-btn" onclick="testLed(3)">3 (黃)</button>
-        <button class="test-btn" onclick="testLed(4)">4 (白)</button>
-        <button class="test-btn" onclick="testLed(5)">5 (綠)</button>
+        <button class="test-btn" onclick="testLed(1)">1 (紅 Re)</button>
+<button class="test-btn" onclick="testLed(2)">2 (藍 Do)</button>
+<button class="test-btn" onclick="testLed(3)">3 (黃 Mi)</button>
+<button class="test-btn" onclick="testLed(4)">4 (白 So)</button>
+<button class="test-btn" onclick="testLed(5)">5 (綠 Fa)</button>
+
         <button class="test-btn" onclick="testLed(0)">關燈</button>
 
         <p style="margin-top:15px; border-top:1px solid #666; padding-top:10px;">
@@ -587,16 +588,17 @@ function playNote() {
     return;
   }
 
-  // ✅ 音名(1~5)（你歌譜用的）
+  // 你歌譜用的「音名數字」：1=Do,2=Re,3=Mi,4=Fa,5=So
   const note = song[index];
 
-  // ✅ 轉成硬體鍵位(1~5)（你板子實際的）
+  // 轉成硬體鍵位：1=紅,2=藍,3=黃,4=白,5=綠
   const hwTarget = mapToHw(note);
 
-  // 畫面顯示音名數字（Do~So）
+  // 畫面顯示仍用音名數字（不會亂）
   document.getElementById("currentNote").innerText = note;
   document.getElementById("logMsg").innerText = `目標：${note}`;
 
+  // ✅ LED板、按鈕板排序一致 → 都送 hwTarget
   if (ledChar) ledChar.writeValue(new TextEncoder().encode(String(hwTarget)));
   if (targetChar) targetChar.writeValue(new TextEncoder().encode(String(hwTarget)));
 }
@@ -608,9 +610,9 @@ function onBtnPress(event) {
   document.getElementById("lastPressed").innerText = pressed;
   if (!isPlaying) return;
 
-  // ✅ 比對要用「硬體鍵位」
-  const note = song[index];          // 音名(1~5)
-  const hwTarget = mapToHw(note);    // 硬體鍵位(1~5)
+  // ✅ 比對也必須用硬體鍵位
+  const note = song[index];
+  const hwTarget = mapToHw(note);
 
   if (pressed === hwTarget) {
     index++;
@@ -619,6 +621,7 @@ function onBtnPress(event) {
     document.getElementById("logMsg").innerText = "❌ 按錯了！(靜音)";
   }
 }
+
 
 async function finishGame() {
   isPlaying = false;
