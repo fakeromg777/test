@@ -9,24 +9,28 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body { font-family: 'Microsoft JhengHei', sans-serif; text-align:center; background:#222; color:white; padding-top:20px;}
-    .box { border:1px solid #555; padding:20px; margin:15px auto; max-width:900px; border-radius:10px; background:#333; }
-    button { padding:10px 18px; font-size:16px; cursor:pointer; border-radius:5px; border:none; margin:5px;}
-    .btn-back { background:#555; color:#fff; }
-    .row { display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; }
-    input, select { padding:10px; font-size:16px; }
+    body { font-family: 'Microsoft JhengHei', sans-serif; text-align:center; background:#222; color:white; padding-top:20px; }
+    .box { border:1px solid #555; padding:22px; margin:15px auto; max-width:980px; border-radius:12px; background:#333; }
+    button { padding:10px 18px; font-size:16px; cursor:pointer; border-radius:6px; border:none; margin:5px; background:#555; color:#fff; }
+    button:hover { filter:brightness(1.05); }
+    .row { display:flex; gap:14px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    label { color:#ddd; }
+    input, select { padding:10px; font-size:16px; border-radius:6px; border:1px solid #666; background:#fff; color:#000; }
     .hint { margin-top:10px; color:#aaa; font-size:14px; }
+    .topbar { display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+    .who { color:#ffcc66; font-weight:bold; }
   </style>
 </head>
 
 <body>
 
 <div class="box">
-  <h2>📈 學習成效追蹤</h2>
-  <div style="margin-bottom:10px;">
-    👤 玩家：<span id="userName">---</span>
-    <button class="btn-back" onclick="goGame()">返回遊戲</button>
-    <button class="btn-back" onclick="logout()">登出</button>
+  <h2 style="margin:0 0 12px 0;">📈 學習成效追蹤</h2>
+
+  <div class="topbar">
+    👤 玩家：<span id="userName" class="who">---</span>
+    <button onclick="goGame()">返回遊戲</button>
+    <button onclick="logout()">登出</button>
   </div>
 
   <div class="row">
@@ -34,201 +38,192 @@
     <select id="reportSongSelect" style="min-width:260px;" onchange="loadReport()"></select>
 
     <label>開始</label>
-    <input id="fromDT" type="datetime-local" step="3600">
+    <input id="fromDT" type="date" />
 
     <label>結束</label>
-    <input id="toDT" type="datetime-local" step="3600">
-
-    <label>模式</label>
-    <select id="reportMode" onchange="loadReport()">
-      <option value="daily_best">每天最佳(最短)</option>
-      <option value="each_try" selected>每次紀錄(到小時)</option>
-      <option value="hour_best">每小時最佳</option>
-    </select>
+    <input id="toDT" type="date" />
   </div>
 
   <div style="margin-top:18px; background:#222; padding:12px; border-radius:10px;">
     <canvas id="reportChart" height="120"></canvas>
   </div>
 
-  <p class="hint">越低越好：秒數越短代表越熟練。</p>
-  <p id="reportMsg" style="color:#ffcc66;"></p>
+  <p class="hint">固定顯示「每次紀錄（到小時）」：秒數越低越好。</p>
+  <p id="reportMsg" style="color:#ffcc66; margin:0;"></p>
 </div>
 
 <script>
-  // ===== 導回遊戲 =====
-  function goGame() {
+/* ===== 導回遊戲 ===== */
+function goGame() {
+  location.href = "index.html";
+}
+
+/* ===== 登出 ===== */
+function logout() {
+  localStorage.removeItem("userId");
+  localStorage.removeItem("userName");
+  location.href = "index.html";
+}
+
+/* ===== 登入檢查 ===== */
+function ensureLogin() {
+  const id = localStorage.getItem("userId");
+  const name = localStorage.getItem("userName");
+  if (!id || !name) {
     location.href = "index.html";
+    return null;
+  }
+  document.getElementById("userName").innerText = `${id}｜${name}`;
+  return { id, name };
+}
+
+/* ===== 歌單 ===== */
+async function initReportSongList() {
+  const sel = document.getElementById("reportSongSelect");
+  sel.innerHTML = "";
+
+  const optAll = document.createElement("option");
+  optAll.value = "";
+  optAll.textContent = "全部歌曲";
+  sel.appendChild(optAll);
+
+  try {
+    const res = await fetch("/test/api/get_songs.php", { cache: "no-store" });
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+
+    (rows || []).forEach(r => {
+      const name = r.song_name || r.name || r.song || "";
+      if (!name) return;
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/* ===== 圖表 ===== */
+let progressChart = null;
+
+function ymd(d){ return d.toISOString().slice(0,10); }
+
+// date -> datetime (整天範圍)
+function toFromDT(dateStr){ return dateStr ? `${dateStr} 00:00:00` : ""; }
+function toToDT(dateStr){ return dateStr ? `${dateStr} 23:59:59` : ""; }
+
+// created_at 容錯正規化
+function normalizeDatetime(s){
+  if(!s) return "";
+  s = String(s).trim();
+  s = s.replace(/\//g, "-");
+  s = s.replace("T", " ");
+  return s;
+}
+
+async function loadReport() {
+  const msgEl = document.getElementById("reportMsg");
+  msgEl.textContent = "";
+
+  const user = ensureLogin();
+  if (!user) return;
+
+  const songName = document.getElementById("reportSongSelect").value || "";
+
+  const fromDate = document.getElementById("fromDT").value || "";
+  const toDate   = document.getElementById("toDT").value || "";
+
+  // ✅ 固定：每次紀錄（到小時）
+  const fromDT = toFromDT(fromDate);
+  const toDT   = toToDT(toDate);
+
+  const url = `/test/api/get_scores.php?player_id=${encodeURIComponent(user.id)}`
+    + `&song_name=${encodeURIComponent(songName)}`
+    + `&from=${encodeURIComponent(fromDT)}`
+    + `&to=${encodeURIComponent(toDT)}`;
+
+  let rows = [];
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(await res.text());
+    rows = await res.json();
+    if (!Array.isArray(rows)) rows = [];
+  } catch (e) {
+    console.error(e);
+    msgEl.textContent = "❌ 讀取成績失敗（請看 Console / Network Response）";
+    return;
   }
 
-  // ===== 登出 =====
-  function logout() {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userName");
-    location.href = "index.html";
-  }
+  const parsed = rows
+    .map(r => ({
+      seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
+      created_at: normalizeDatetime(r.created_at ?? r.play_date ?? r.date ?? "")
+    }))
+    .filter(x => !isNaN(x.seconds) && x.created_at);
 
-  // ===== 檢查登入 =====
-  function ensureLogin() {
-    const id = localStorage.getItem("userId");
-    const name = localStorage.getItem("userName");
-    if (!id || !name) {
-      location.href = "index.html";
-      return null;
-    }
-    document.getElementById("userName").innerText = `${id}｜${name}`;
-    return { id, name };
-  }
+  // ✅ 每次紀錄到小時
+  parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const labels = parsed.map(it => it.created_at.slice(0, 13)); // YYYY-MM-DD HH
+  const data   = parsed.map(it => it.seconds);
 
-  // ===== 報表：歌單 =====
-  async function initReportSongList() {
-    const sel = document.getElementById("reportSongSelect");
-    sel.innerHTML = "";
+  const canvas = document.getElementById("reportChart");
+  if (progressChart) { progressChart.destroy(); progressChart = null; }
 
-    const optAll = document.createElement("option");
-    optAll.value = "";
-    optAll.textContent = "全部歌曲";
-    sel.appendChild(optAll);
-
-    try {
-      const res = await fetch("/test/api/get_songs.php", { cache:"no-store" });
-      if (!res.ok) throw new Error(await res.text());
-      const rows = await res.json();
-      (rows || []).forEach(r => {
-        const name = r.song_name || r.name || r.song || "";
-        if (!name) return;
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        sel.appendChild(opt);
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  // ===== 報表：畫圖 =====
-  let progressChart = null;
-
-  async function loadReport() {
-    const msgEl = document.getElementById("reportMsg");
-    msgEl.textContent = "";
-
-    const user = ensureLogin();
-    if (!user) return;
-
-    const songName = document.getElementById("reportSongSelect").value || "";
-    const fromDT = document.getElementById("fromDT").value || "";
-    const toDT   = document.getElementById("toDT").value || "";
-    const mode   = document.getElementById("reportMode").value || "daily_best";
-
-    const url = `/test/api/get_scores.php?player_id=${encodeURIComponent(user.id)}`
-      + `&song_name=${encodeURIComponent(songName)}`
-      + `&from=${encodeURIComponent(fromDT)}`
-      + `&to=${encodeURIComponent(toDT)}`;
-
-    let rows = [];
-    try {
-      const res = await fetch(url, { cache:"no-store" });
-      if (!res.ok) throw new Error(await res.text());
-      rows = await res.json();
-      if (!Array.isArray(rows)) rows = [];
-    } catch (e) {
-      console.error(e);
-      msgEl.textContent = "❌ 讀取成績失敗（請看 Console / Network Response）";
-      return;
-    }
-
-    const parsed = rows
-      .map(r => ({
-        seconds: Number(r.seconds ?? r.best_time ?? r.time ?? r.score),
-        created_at: String(r.created_at ?? r.play_date ?? r.date ?? "")
-      }))
-      .filter(x => !isNaN(x.seconds) && x.created_at);
-
-    let labels = [];
-    let data = [];
-    let xTitle = "日期";
-
-    if (mode === "daily_best") {
-      const bestByDate = new Map();
-      for (const it of parsed) {
-        const d = it.created_at.slice(0, 10); // YYYY-MM-DD
-        const prev = bestByDate.get(d);
-        if (prev == null || it.seconds < prev) bestByDate.set(d, it.seconds);
-      }
-      labels = Array.from(bestByDate.keys()).sort();
-      data = labels.map(d => bestByDate.get(d));
-      xTitle = "日期";
-
-    } else if (mode === "each_try") {
-      parsed.sort((a, b) => a.created_at.localeCompare(b.created_at));
-      labels = parsed.map(it => it.created_at.slice(0, 13)); // YYYY-MM-DD HH
-      data = parsed.map(it => it.seconds);
-      xTitle = "日期(到小時)";
-
-    } else if (mode === "hour_best") {
-      const bestByHour = new Map();
-      for (const it of parsed) {
-        const h = it.created_at.slice(0, 13);
-        const prev = bestByHour.get(h);
-        if (prev == null || it.seconds < prev) bestByHour.set(h, it.seconds);
-      }
-      labels = Array.from(bestByHour.keys()).sort();
-      data = labels.map(h => bestByHour.get(h));
-      xTitle = "日期(到小時)";
-    }
-
-    const canvas = document.getElementById("reportChart");
-    if (progressChart) { progressChart.destroy(); progressChart = null; }
-
-    if (labels.length === 0) {
-      msgEl.textContent = "目前沒有資料（請調整時間範圍或先玩一局再看）";
-      progressChart = new Chart(canvas, {
-        type: "line",
-        data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
-        options: { responsive: true }
-      });
-      return;
-    }
-
+  if (labels.length === 0) {
+    msgEl.textContent = "目前沒有資料（可調整日期範圍或先玩一局）";
     progressChart = new Chart(canvas, {
       type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label:
-            mode === "daily_best" ? "每天最佳秒數（越低越好）" :
-            mode === "hour_best"  ? "每小時最佳秒數（越低越好）" :
-                                    "每次秒數（越低越好）",
-          data,
-          borderWidth: 2,
-          tension: 0.3
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { title: { display: true, text: "秒數" } },
-          x: {
-            title: { display: true, text: xTitle },
-            ticks: { autoSkip: true, maxRotation: 0 }
-          }
-        }
-      }
+      data: { labels: [], datasets: [{ label: "沒有資料", data: [] }] },
+      options: { responsive: true }
     });
+    return;
   }
 
-  // ===== 初始化 =====
-  window.addEventListener("load", async () => {
-    const user = ensureLogin();
-    if (!user) return;
-
-    await initReportSongList();
-    document.getElementById("fromDT").addEventListener("change", loadReport);
-    document.getElementById("toDT").addEventListener("change", loadReport);
-    loadReport();
+  progressChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "每次秒數（到小時，越低越好）",
+        data,
+        borderWidth: 2,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { title: { display: true, text: "秒數" } },
+        x: {
+          title: { display: true, text: "日期(到小時)" },
+          ticks: { autoSkip: true, maxRotation: 0 }
+        }
+      }
+    }
   });
+}
+
+/* ===== 初始化 ===== */
+window.addEventListener("load", async () => {
+  const user = ensureLogin();
+  if (!user) return;
+
+  // 預設最近 7 天
+  const today = new Date();
+  const d1 = new Date(today);
+  d1.setDate(d1.getDate() - 7);
+  document.getElementById("fromDT").value = ymd(d1);
+  document.getElementById("toDT").value = ymd(today);
+
+  await initReportSongList();
+
+  document.getElementById("fromDT").addEventListener("change", loadReport);
+  document.getElementById("toDT").addEventListener("change", loadReport);
+
+  loadReport();
+});
 </script>
 
 </body>
