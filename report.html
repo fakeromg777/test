@@ -89,7 +89,7 @@ async function initReportSongList() {
   sel.appendChild(optAll);
 
   try {
-    const res = await fetch("/api/get_songs.php", { cache: "no-store" });
+    const res = await fetch("./api/get_songs.php", { cache: "no-store" });
     if (!res.ok) throw new Error(await res.text());
     const rows = await res.json();
 
@@ -140,7 +140,7 @@ async function loadReport() {
   const fromDT = toFromDT(fromDate);
   const toDT   = toToDT(toDate);
 
-  const url = `/api/get_scores.php?player_id=${encodeURIComponent(user.id)}`
+  const url = `./api/get_scores.php?player_id=${encodeURIComponent(user.id)}`
     + `&song_name=${encodeURIComponent(songName)}`
     + `&from=${encodeURIComponent(fromDT)}`
     + `&to=${encodeURIComponent(toDT)}`;
