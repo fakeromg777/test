@@ -150,13 +150,13 @@ function toHw(n){ return SEM_TO_HW[n] ?? n; }
 
 /* ================== 你的 API 路徑（保留） ================== */
 async function fetchUserById(id){
-  const res = await fetch(`/test/api/login.php?id=${encodeURIComponent(id)}`, { cache:"no-store" });
+  const res = await fetch(`/api/login.php?id=${encodeURIComponent(id)}`, { cache:"no-store" });
   if(!res.ok) return null;
   const data = await res.json();
   return data && data.id ? data : null;
 }
 async function fetchUserByName(name){
-  const res = await fetch(`/test/api/find_player.php?name=${encodeURIComponent(name)}`, { cache:"no-store" });
+  const res = await fetch(`/api/find_player.php?name=${encodeURIComponent(name)}`, { cache:"no-store" });
   if(!res.ok) return null;
   const data = await res.json();
   return data && data.id ? data : null;
@@ -164,7 +164,7 @@ async function fetchUserByName(name){
 async function loadNextId(){
   addMsg.innerText = "";
   try{
-    const res = await fetch(`/test/api/next_player_id.php`, { cache:"no-store" });
+    const res = await fetch(`/api/next_player_id.php`, { cache:"no-store" });
     const data = await res.json();
     newId.value = data.next_id || "";
     newId.readOnly = true;
@@ -181,7 +181,7 @@ async function addPlayer(){
 
   addMsg.innerText = "儲存中...";
   try{
-    const res = await fetch(`/test/api/add_player.php`, {
+    const res = await fetch(`/api/add_player.php`, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ id, name })
@@ -205,7 +205,7 @@ async function saveScore(seconds){
   const songName = document.querySelector("#songSelect option:checked")?.textContent || "unknown";
   if(!playerId || !playerName){ log("⚠️ 未登入，略過存分數"); return; }
 
-  const res = await fetch(`/test/api/save_score.php`, {
+  const res = await fetch(`/api/save_score.php`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({
